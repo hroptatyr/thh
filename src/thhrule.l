@@ -57,20 +57,51 @@
     :writer set-unix
     :type fixnum)))
 
+(defmethod set-unix :after ((u fixnum) (d date))
+  (multiple-value-bind (ts tm th dd dm dy dow dst-p tz)
+      (decode-universal-time u)
+    (setf (slot-value d 'year) dy)
+    (setf (slot-value d 'mon) dm)
+    (setf (slot-value d 'dom) dd)
+    (setf (slot-value d 'dow) (nth dow *day-of-week*))
+    (setf (slot-value d 'hour) th)
+    (setf (slot-value d 'min) tm)
+    (setf (slot-value d 'sec) ts)))
+
+(defmethod fixup-date ((d date))
+  (let ((unix (encode-universal-time
+	       (get-sec d)
+	       (get-min d)
+	       (get-hour d)
+	       (get-dom d)
+	       (get-mon d)
+	       (get-year d))))
+    (set-unix unix d)))
+
+(defmethod set-year :after (dummy (d date))
+  (fixup-date d))
+
+(defmethod set-mon :after (dummy (d date))
+  (fixup-date d))
+
+(defmethod set-dom :after (dummy (d date))
+  (fixup-date d))
+
+(defmethod set-hour :after (dummy (d date))
+  (fixup-date d))
+
+(defmethod set-min :after (dummy (d date))
+  (fixup-date d))
+
+(defmethod set-sec :after (dummy (d date))
+  (fixup-date d))
+
 (defun make-date (&key year (mon 1) (dom 1) (hour 0) (min 0) (sec 0) unix)
   (let ((unix (or unix
-		  (encode-universal-time sec min hour dom mon year))))
-    (multiple-value-bind (ts tm th dd dm dy dow dst-p tz)
-	(decode-universal-time unix)
-      (make-instance 'date
-		     :unix unix
-		     :year dy
-		     :mon dm
-		     :dom dd
-		     :dow (nth dow *day-of-week*)
-		     :hour th
-		     :min tm
-		     :sec ts))))
+		  (encode-universal-time sec min hour dom mon year)))
+	(d (make-instance 'date)))
+    (set-unix unix d)
+    d))
 
 (defmethod print-object ((d date) out)
   (print-unreadable-object (d out :type t)
@@ -105,6 +136,10 @@
 
 (defmethod d- ((d1 date) (d2 date))
   (make-date :unix (- (get-unix d1) (get-unix d2))))
+
+(defmethod consecutivep ((d1 date) (d2 date))
+  "Return non-NIL when there is no further date between D1 and D2."
+  (<= (abs (- (get-unix d1) (get-unix d2))) 1))
 
 
 ;; intervals
@@ -143,9 +178,24 @@
   (d> (get-start i1) (get-start i2)))
 
 (defmethod containsp ((i interval) (d date))
+  "Return non-NIL when I contains D."
   (and (d>= d (get-start i))
        (d<= d (get-end i))))
 
-(print (d= (make-date :year 2011) (make-date :year 2011)))
+(defmethod containsp ((i1 interval) (i2 interval))
+  "Return non-NIL when I1 contains I2."
+  (and (containsp i1 (get-start i2))
+       (containsp i1 (get-end i2))))
+
+(defmethod connectedp ((i interval) (d date))
+  "Return non-NIL when there is no date point between I and D."
+  (or (containsp i d)
+      (consecutivep (get-start i) d)
+      (consecutivep (get-end i) d)))
+
+(defmethod connectedp ((i1 interval) (i2 interval))
+  "Return non-NIL when there is no date point between I1 and I2."
+  (or (connectedp i1 (get-start i2))
+      (connectedp i1 (get-end i2))))
 
 ;; thhrule.l ends here
