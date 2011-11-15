@@ -1,3 +1,5 @@
+(require :thhrule.util)
+
 (in-package :thhrule)
 
 
