@@ -157,7 +157,6 @@
    (length
     :type fixnum
     :reader get-length
-    :writer set-length
     :initarg :length)))
 
 (defmethod make-interval (&key start end length)
@@ -165,6 +164,14 @@
 		 :start start
 		 :end (or end (d+ start length))
 		 :length (or length (d- end start))))
+
+(defmethod set-start :after (s (i interval))
+  "Update length slot."
+  (setf (slot-value i 'length) (d- (get-end i) s)))
+
+(defmethod set-end :after (e (i interval))
+  "Update length slot."
+  (setf (slot-value i 'length) (d- e (get-start i))))
 
 (defmethod print-object ((i interval) out)
   (print-unreadable-object (i out :type t)
