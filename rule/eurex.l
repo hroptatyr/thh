@@ -1,5 +1,5 @@
-(require :asdf)
-(require :thhrule)
+(require "asdf")
+(asdf:load-system :thhrule)
 
 (use-package :thhrule)
 
@@ -7,7 +7,7 @@
   "Covers xmas and boxing day."
   (make-interval
    :start (make-date :year year :mon 12 :dom 25)
-   :length (* 2 86400)))
+   :length 2))
 
 (loop for i from 2010 to 2019
   do
