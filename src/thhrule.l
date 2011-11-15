@@ -14,19 +14,19 @@
     :initarg :year
     :reader get-year
     :writer set-year
-    :type fixnum)
+    :type integer)
    (mon
     :initarg :mon
     :reader get-mon
     :writer set-mon
     :initform 1
-    :type fixnum)
+    :type integer)
    (dom
     :initarg :dom
     :reader get-dom
     :writer set-dom
     :initform 1
-    :type fixnum)
+    :type integer)
    (dow
     :initarg :dow
     :reader get-dow
@@ -36,26 +36,26 @@
     :reader get-hour
     :writer set-hour
     :initform 0
-    :type fixnum)
+    :type integer)
    (min
     :initarg :min
     :reader get-min
     :writer set-min
     :initform 0
-    :type fixnum)
+    :type integer)
    (sec
     :initarg :sec
     :reader get-sec
     :writer set-sec
     :initform 0
-    :type fixnum)
+    :type integer)
    (unix
     :initarg :unix
     :reader get-unix
     :writer set-unix
-    :type fixnum)))
+    :type integer)))
 
-(defmethod set-unix :after ((u fixnum) (d date))
+(defmethod set-unix :after ((u integer) (d date))
   (multiple-value-bind (ts tm th dd dm dy dow dst-p tz)
       (decode-universal-time u)
     (setf (slot-value d 'year) dy)
@@ -129,7 +129,7 @@
 (defmethod d+ ((d date) (inc number))
   (make-date :unix (+ (get-unix d) inc)))
 
-(defmethod d- ((d date) (inc fixnum))
+(defmethod d- ((d date) (inc integer))
   (make-date :unix (- (get-unix d) inc)))
 
 (defmethod d- ((d1 date) (d2 date))
@@ -153,7 +153,7 @@
     :writer set-end
     :initarg :end)
    (length
-    :type fixnum
+    :type integer
     :reader get-length
     :initarg :length)))
 
