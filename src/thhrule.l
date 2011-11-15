@@ -2,14 +2,12 @@
   (:use :cl)
   (:export
    #:make-date
-   #:defrule
-   #:defrule/once
-   #:defrule/yearly))
+   #:make-interval))
 
 (in-package :thhrule)
 
-(defconstant *day-of-week* '(mon tue wed thu fri sat sun))
-(deftype dow () `(member ,@*day-of-week*))
+(defconstant +day-of-week+ '(mon tue wed thu fri sat sun))
+(deftype dow () `(member ,@+day-of-week+))
 
 (defclass date ()
   ((year
@@ -63,7 +61,7 @@
     (setf (slot-value d 'year) dy)
     (setf (slot-value d 'mon) dm)
     (setf (slot-value d 'dom) dd)
-    (setf (slot-value d 'dow) (nth dow *day-of-week*))
+    (setf (slot-value d 'dow) (nth dow +day-of-week+))
     (setf (slot-value d 'hour) th)
     (setf (slot-value d 'min) tm)
     (setf (slot-value d 'sec) ts)))
@@ -159,7 +157,7 @@
     :reader get-length
     :initarg :length)))
 
-(defmethod make-interval (&key start end length)
+(defmethod make-interval (&key start end length unit)
   (make-instance 'interval
 		 :start start
 		 :end (or end (d+ start length))
