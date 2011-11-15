@@ -1,9 +1,9 @@
 (in-package :thhrule)
 
-(defconstant +day-of-week+ '(mon tue wed thu fri sat sun))
+(defparameter +day-of-week+ '(mon tue wed thu fri sat sun))
 (deftype dow () `(member ,@+day-of-week+))
 
-(defclass datetime ()
+(defclass date ()
   ((year
     :initarg :year
     :reader get-year
@@ -25,7 +25,17 @@
     :initarg :dow
     :reader get-dow
     :type dow)
-   (hour
+   (unix
+    :initarg :unix
+    :reader get-unix
+    :writer set-unix
+    :type integer)
+   (step
+    :reader get-step
+    :initform 86400)))
+
+(defclass datetime (date)
+  ((hour
     :initarg :hour
     :reader get-hour
     :writer set-hour
@@ -43,13 +53,18 @@
     :writer set-sec
     :initform 0
     :type integer)
-   (unix
-    :initarg :unix
-    :reader get-unix
-    :writer set-unix
-    :type integer)))
+   (step
+    :initform 1)))
 
-(defmethod set-unix :after ((u integer) (d datetime))
+(defmethod fixup-date ((u integer) (d date))
+  (multiple-value-bind (ts tm th dd dm dy dow dst-p tz)
+      (decode-universal-time u)
+    (setf (slot-value d 'year) dy)
+    (setf (slot-value d 'mon) dm)
+    (setf (slot-value d 'dom) dd)
+    (setf (slot-value d 'dow) (nth dow +day-of-week+))))
+
+(defmethod fixup-date ((u integer) (d datetime))
   (multiple-value-bind (ts tm th dd dm dy dow dst-p tz)
       (decode-universal-time u)
     (setf (slot-value d 'year) dy)
@@ -60,74 +75,121 @@
     (setf (slot-value d 'min) tm)
     (setf (slot-value d 'sec) ts)))
 
-(defmethod fixup-datetime ((d datetime))
-  (let ((unix (encode-universal-time
-	       (get-sec d)
-	       (get-min d)
-	       (get-hour d)
-	       (get-dom d)
-	       (get-mon d)
-	       (get-year d))))
-    (set-unix unix d)))
+(defmethod fixup-unix ((d date))
+  (with-slots (dom mon year) d
+    (let ((unix (encode-universal-time
+		 0 0 0
+		 dom mon year)))
+      (setf (slot-value d 'unix) unix))))
 
-(defmethod set-year :after (dummy (d datetime))
-  (fixup-datetime d))
+(defmethod fixup-unix ((d datetime))
+  (with-slots (dom mon year sec min hour) d
+    (let ((unix (encode-universal-time
+		 sec min hour
+		 dom mon year)))
+      (setf (slot-value d 'unix) unix))))
 
-(defmethod set-mon :after (dummy (d datetime))
-  (fixup-datetime d))
+(defmethod fixup-unix :after ((d date))
+  "Fix up the day of the week too."
+  (with-slots (unix) d
+    ;; veeeeery illegal computation
+    (let* ((daisy (truncate (/ unix 86400)))
+	   (dow (mod daisy 7)))
+      (setf (slot-value d 'dow) (nth dow +day-of-week+)))))
 
-(defmethod set-dom :after (dummy (d datetime))
-  (fixup-datetime d))
+(defmethod set-year :after (dummy (d date))
+  (fixup-unix d))
+
+(defmethod set-mon :after (dummy (d date))
+  (fixup-unix d))
+
+(defmethod set-dom :after (dummy (d date))
+  (fixup-unix d))
 
 (defmethod set-hour :after (dummy (d datetime))
-  (fixup-datetime d))
+  (fixup-unix d))
 
 (defmethod set-min :after (dummy (d datetime))
-  (fixup-datetime d))
+  (fixup-unix d))
 
 (defmethod set-sec :after (dummy (d datetime))
-  (fixup-datetime d))
+  (fixup-unix d))
+
+(defmethod set-unix :after (unix (d date))
+  (fixup-date unix d))
+
+(defun make-date (&key year (mon 1) (dom 1) unix)
+  (cond
+   (unix
+    (let ((d (make-instance 'date :unix unix)))
+      (fixup-date unix d)
+      d))
+   (year
+    (let ((d (make-instance 'date :year year :mon mon :dom dom)))
+      (fixup-unix d)
+      d))))
 
 (defun make-datetime (&key year (mon 1) (dom 1) (hour 0) (min 0) (sec 0) unix)
-  (let ((unix (or unix
-		  (encode-universal-time sec min hour dom mon year)))
-	(d (make-instance 'datetime)))
-    (set-unix unix d)
-    d))
+  (cond
+   (unix
+    (let ((d (make-instance 'datetime :unix unix)))
+      (fixup-date unix d)
+      d))
+   (year
+    (let ((d (make-instance 'date
+			    :year year :mon mon :dom dom
+			    :hour hour :min min :sec sec)))
+      (fixup-unix d)
+      d))))
+
+(defmethod print-object ((d date) out)
+  (with-slots (dom mon year dow unix) d
+    (print-unreadable-object (d out :type t)
+      (format out
+	      "~4,'0d-~2,'0d-~2,'0d :dom ~a :unix ~d"
+	      year mon dom dow unix))))
 
 (defmethod print-object ((d datetime) out)
-  (print-unreadable-object (d out :type t)
-    (format out
-	    "~4,'0d-~2,'0d-~2,'0dT~2,'0d:~2,'0d:~2,'0d :dom ~a :unix ~d"
-	    (get-year d) (get-mon d) (get-dom d)
-	    (get-hour d) (get-min d) (get-sec d)
-	    (get-dow d) (get-unix d))))
+  (with-slots (dom mon year dow unix hour min sec) d
+    (print-unreadable-object (d out :type t)
+      (format out
+	      "~4,'0d-~2,'0d-~2,'0dT~2,'0d:~2,'0d:~2,'0d :dom ~a :unix ~d"
+	      year mon dom hour min sec dow unix))))
 
-(defmethod d= ((d1 datetime) (d2 datetime))
+(defmethod d= ((d1 date) (d2 date))
   (= (get-unix d1) (get-unix d2)))
 
-(defmethod d> ((d1 datetime) (d2 datetime))
+(defmethod d> ((d1 date) (d2 date))
   (> (get-unix d1) (get-unix d2)))
 
-(defmethod d>= ((d1 datetime) (d2 datetime))
+(defmethod d>= ((d1 date) (d2 date))
   (or (d> d1 d2)
       (d= d1 d2)))
 
-(defmethod d< ((d1 datetime) (d2 datetime))
+(defmethod d< ((d1 date) (d2 date))
   (not (d>= d1 d2)))
 
-(defmethod d<= ((d1 datetime) (d2 datetime))
+(defmethod d<= ((d1 date) (d2 date))
   (or (d< d1 d2)
       (d= d1 d2)))
+
+(defmethod d+ ((d date) (inc number))
+  (make-date :unix (+ (get-unix d) (* 86400 inc))))
+
+(defmethod d- ((d date) (inc integer))
+  (d+ d (- inc)))
+
+(defmethod d- ((d1 date) (d2 date))
+  (truncate (/ (- (get-unix d1) (get-unix d2)) 86400)))
 
 (defmethod d+ ((d datetime) (inc number))
   (make-datetime :unix (+ (get-unix d) inc)))
 
 (defmethod d- ((d datetime) (inc integer))
-  (make-datetime :unix (- (get-unix d) inc)))
+  (d+ d (- inc)))
 
 (defmethod d- ((d1 datetime) (d2 datetime))
-  (make-datetime :unix (- (get-unix d1) (get-unix d2))))
+  (- (get-unix d1) (get-unix d2)))
 
 (defmethod consecutivep ((d1 datetime) (d2 datetime))
   "Return non-NIL when there is no further datetime between D1 and D2."
