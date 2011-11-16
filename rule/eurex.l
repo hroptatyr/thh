@@ -14,4 +14,3 @@
     do
     (print (xmas i))))
 
-(test)
