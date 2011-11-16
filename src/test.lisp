@@ -10,3 +10,10 @@
 (defholiday/yearly new-year :in 'jan :on 1)
 
 (defholiday/once new-year/2012 :on "2012-01-02")
+
+(new-year/2012 (thhrule::make-stamp :unix 123456))
+(new-year/2012 (thhrule::make-stamp :unix 3534494399))
+(new-year/2012 (thhrule::make-stamp :unix 3534494400))
+(new-year/2012 (thhrule::make-stamp :unix 3534580799))
+(new-year/2012 (thhrule::make-stamp :unix 3534580800))
+(new-year/2012 (thhrule::make-stamp :unix 3534580801))

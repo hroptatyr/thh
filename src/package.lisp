@@ -4,7 +4,17 @@
    #:make-stamp
    #:make-date
    #:make-datetime
-   #:make-interval))
+   #:make-interval
+   #:d>
+   #:d>=
+   #:d<
+   #:d<=
+   #:d=
+   #:d+
+   #:d-
+   #:consecutivep
+   #:connectedp
+   #:containsp))
 
 (defpackage :cybertiggyr-time
   (:documentation "CyberTiggyr's Time-related library")
