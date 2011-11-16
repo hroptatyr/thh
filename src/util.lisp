@@ -3,7 +3,17 @@
 (defparameter +day-of-week+ '(mon tue wed thu fri sat sun))
 (deftype dow () `(member ,@+day-of-week+))
 
-(defclass date ()
+(defclass stamp ()
+  ((unix
+    :initarg :unix
+    :reader get-unix
+    :writer set-unix
+    :type integer)
+   (step
+    :reader get-step
+    :initform 86400)))
+
+(defclass date (stamp)
   ((year
     :initarg :year
     :reader get-year
@@ -25,16 +35,11 @@
     :initarg :dow
     :reader get-dow
     :type dow)
-   (unix
-    :initarg :unix
-    :reader get-unix
-    :writer set-unix
-    :type integer)
    (step
     :reader get-step
     :initform 86400)))
 
-(defclass datetime (date)
+(defclass tod (stamp)
   ((hour
     :initarg :hour
     :reader get-hour
@@ -54,97 +59,134 @@
     :initform 0
     :type integer)
    (step
+    :reader get-step
     :initform 1)))
 
-(defun trunc/ (a b)
-  (truncate (/ a b)))
+(defclass datetime (date tod)
+  ((step
+    :reader get-step
+    :initform 1)))
 
-(defmethod fixup-date ((u integer) (d date))
+(defmethod fixup-human ((u integer) (s stamp)))
+
+(defmethod fixup-human ((u integer) (d date))
+  (multiple-value-bind (ts tm th dd dm dy wd dst-p tz)
+      (decode-universal-time u)
+    (with-slots (year mon dom dow) d
+      (setf year dy)
+      (setf mon dm)
+      (setf dom dd)
+      (setf dow (nth wd +day-of-week+)))))
+
+(defmethod fixup-human ((u integer) (tm tod))
+  (let (s m h)
+    (multiple-value-setq (u s) (floor u 60))
+    (multiple-value-setq (u m) (floor u 60))
+    (multiple-value-setq (u h) (floor u 24))
+    (with-slots (sec min hour) tm
+      (setf sec s)
+      (setf min m)
+      (setf hour h))))
+
+(defmethod fixup-human ((u integer) (dt datetime))
   (multiple-value-bind (ts tm th dd dm dy dow dst-p tz)
       (decode-universal-time u)
-    (setf (slot-value d 'year) dy)
-    (setf (slot-value d 'mon) dm)
-    (setf (slot-value d 'dom) dd)
-    (setf (slot-value d 'dow) (nth dow +day-of-week+))))
+    (with-slots (year mon dom dow hour min sec) dt
+      (setf year dy)
+      (setf mon dm)
+      (setf dom dd)
+      (setf dow (nth dow +day-of-week+))
+      (setf hour th)
+      (setf min tm)
+      (setf sec ts))))
 
-(defmethod fixup-date ((u integer) (d datetime))
-  (multiple-value-bind (ts tm th dd dm dy dow dst-p tz)
-      (decode-universal-time u)
-    (setf (slot-value d 'year) dy)
-    (setf (slot-value d 'mon) dm)
-    (setf (slot-value d 'dom) dd)
-    (setf (slot-value d 'dow) (nth dow +day-of-week+))
-    (setf (slot-value d 'hour) th)
-    (setf (slot-value d 'min) tm)
-    (setf (slot-value d 'sec) ts)))
+(defmethod fixup-stamp ((s stamp))
+  (print "wrong fixup"))
 
-(defmethod fixup-unix ((d date))
-  (with-slots (dom mon year) d
-    (let ((unix (encode-universal-time
-		 0 0 0
-		 dom mon year)))
-      (setf (slot-value d 'unix) unix))))
+(defmethod fixup-stamp ((d date))
+  (with-slots (dom mon year unix) d
+    (let ((u (encode-universal-time 0 0 0 dom mon year)))
+      (setf unix u))))
 
-(defmethod fixup-unix ((d datetime))
-  (with-slots (dom mon year sec min hour) d
-    (let ((unix (encode-universal-time
-		 sec min hour
-		 dom mon year)))
-      (setf (slot-value d 'unix) unix))))
+(defmethod fixup-stamp ((tm tod))
+  (with-slots (hour min sec unix) tm
+    (let ((u (+ sec
+		(* min 60)
+		(* hour 3600))))
+      (setf unix u))))
 
-(defmethod fixup-unix :after ((d date))
+(defmethod fixup-stamp ((dt datetime))
+  (with-slots (dom mon year sec min hour unix) dt
+    (let ((u (encode-universal-time sec min hour dom mon year)))
+      (setf unix u))))
+
+(defmethod fixup-stamp :after ((d date))
   "Fix up the day of the week too."
-  (with-slots (unix) d
+  (with-slots (dow unix) d
     ;; veeeeery illegal computation
-    (let* ((daisy (trunc/ unix 86400))
-	   (dow (mod daisy 7)))
-      (setf (slot-value d 'dow) (nth dow +day-of-week+)))))
+    (let* ((daisy (floor unix 86400))
+	   (dm (mod daisy 7)))
+      (setf dow (nth dm +day-of-week+)))))
 
 (defmethod set-year :after (dummy (d date))
-  (fixup-unix d))
+  (fixup-stamp d))
 
 (defmethod set-mon :after (dummy (d date))
-  (fixup-unix d))
+  (fixup-stamp d))
 
 (defmethod set-dom :after (dummy (d date))
-  (fixup-unix d))
+  (fixup-stamp d))
 
-(defmethod set-hour :after (dummy (d datetime))
-  (fixup-unix d))
+(defmethod set-hour :after (dummy (tm tod))
+  (fixup-stamp tm))
 
-(defmethod set-min :after (dummy (d datetime))
-  (fixup-unix d))
+(defmethod set-min :after (dummy (tm tod))
+  (fixup-stamp tm))
 
-(defmethod set-sec :after (dummy (d datetime))
-  (fixup-unix d))
+(defmethod set-sec :after (dummy (tm tod))
+  (fixup-stamp tm))
 
-(defmethod set-unix :after (unix (d date))
-  (fixup-date unix d))
+(defmethod set-unix :after (unix (s stamp))
+  (fixup-human unix s))
 
-(defun make-date-by-unix (what &key unix)
-  (let ((d (make-instance what :unix unix)))
-    (fixup-date unix d)
-    d))
+(defun make-stamp (&key what unix)
+  (let ((u (make-instance (or what 'stamp) :unix unix)))
+    (fixup-human unix u)
+    u))
 
 (defun make-date (&key year (mon 1) (dom 1) unix)
   (cond
    (unix
-    (make-date-by-unix 'date :unix unix))
+    (make-stamp :what 'date :unix unix))
    (year
     (let ((d (make-instance 'date :year year :mon mon :dom dom)))
-      (fixup-unix d)
+      (fixup-stamp d)
       d))))
+
+(defun make-time (&key (hour 0) (min 0) (sec 0) unix)
+  (cond
+   (unix
+    (make-stamp :what 'tod :unix unix))
+   (t
+    (let ((tm (make-instance 'tod :hour hour :min min :sec sec)))
+      (fixup-stamp tm)
+      tm))))
 
 (defun make-datetime (&key year (mon 1) (dom 1) (hour 0) (min 0) (sec 0) unix)
   (cond
    (unix
-    (make-date-by-unix 'datetime :unix unix))
+    (make-stamp :what 'datetime :unix unix))
    (year
-    (let ((d (make-instance 'datetime
-			    :year year :mon mon :dom dom
-			    :hour hour :min min :sec sec)))
-      (fixup-unix d)
-      d))))
+    (let ((dt (make-instance 'datetime
+			     :year year :mon mon :dom dom
+			     :hour hour :min min :sec sec)))
+      (fixup-stamp dt)
+      dt))))
+
+(defmethod print-object ((s stamp) out)
+  (with-slots (unix) s
+    (print-unreadable-object (s out :type t)
+      (format out ":unix ~d" unix))))
 
 (defmethod print-object ((d date) out)
   (with-slots (dom mon year dow unix) d
@@ -153,46 +195,53 @@
 	      "~4,'0d-~2,'0d-~2,'0d :dom ~a :unix ~d"
 	      year mon dom dow unix))))
 
-(defmethod print-object ((d datetime) out)
-  (with-slots (dom mon year dow unix hour min sec) d
-    (print-unreadable-object (d out :type t)
+(defmethod print-object ((tm tod) out)
+  (with-slots (hour min sec unix) tm
+    (print-unreadable-object (tm out :type t)
+      (format out
+	      "~2,'0d:~2,'0d:~2,'0d :unix ~d"
+	      hour min sec unix))))
+
+(defmethod print-object ((dt datetime) out)
+  (with-slots (dom mon year dow unix hour min sec) dt
+    (print-unreadable-object (dt out :type t)
       (format out
 	      "~4,'0d-~2,'0d-~2,'0dT~2,'0d:~2,'0d:~2,'0d :dom ~a :unix ~d"
 	      year mon dom hour min sec dow unix))))
 
 ;; arithmetic
-(defmethod d= ((d1 date) (d2 date))
-  (let ((step (max (get-step d1) (get-step d2))))
-    (= (trunc/ (get-unix d1) step) (trunc/ (get-unix d2) step))))
+(defmethod d= ((s1 stamp) (s2 stamp))
+  (let ((step (max (get-step s1) (get-step s2))))
+    (= (floor (get-unix s1) step) (floor (get-unix s2) step))))
 
-(defmethod d> ((d1 date) (d2 date))
-  (let ((step (max (get-step d1) (get-step d2))))
-    (> (trunc/ (get-unix d1) step) (trunc/ (get-unix d2) step))))
+(defmethod d> ((s1 stamp) (s2 stamp))
+  (let ((step (max (get-step s1) (get-step s2))))
+    (> (floor (get-unix s1) step) (floor (get-unix s2) step))))
 
-(defmethod d>= ((d1 date) (d2 date))
-  (or (d> d1 d2)
-      (d= d1 d2)))
+(defmethod d>= ((s1 stamp) (s2 stamp))
+  (or (d> s1 s2)
+      (d= s1 s2)))
 
-(defmethod d< ((d1 date) (d2 date))
-  (not (d>= d1 d2)))
+(defmethod d< ((s1 stamp) (s2 stamp))
+  (not (d>= s1 s2)))
 
-(defmethod d<= ((d1 date) (d2 date))
-  (or (d< d1 d2)
-      (d= d1 d2)))
+(defmethod d<= ((s1 stamp) (s2 stamp))
+  (or (d< s1 s2)
+      (d= s1 s2)))
 
-(defmethod d+ ((d date) (inc number))
-  (make-date-by-unix (type-of d) :unix (+ (get-unix d) (* (get-step d) inc))))
+(defmethod d+ ((s stamp) (inc number))
+  (make-stamp :what (type-of s) :unix (+ (get-unix s) (* (get-step s) inc))))
 
-(defmethod d- ((d date) (inc integer))
-  (d+ d (- inc)))
+(defmethod d- ((s stamp) (inc integer))
+  (d+ s (- inc)))
 
-(defmethod d- ((d1 date) (d2 date))
-  (let ((step (max (get-step d1) (get-step d2))))
-    (trunc/ (- (get-unix d1) (get-unix d2)) step)))
+(defmethod d- ((s1 stamp) (s2 stamp))
+  (let ((step (max (get-step s1) (get-step s2))))
+    (floor (- (get-unix s1) (get-unix s2)) step)))
 
-(defmethod consecutivep ((d1 date) (d2 date))
-  "Return non-NIL when there is no further datetime between D1 and D2."
-  (<= (abs (d- d1 d2)) 1))
+(defmethod consecutivep ((s1 stamp) (s2 stamp))
+  "Return non-NIL when there is no further points between S1 and S2."
+  (<= (abs (d- s1 s2)) 1))
 
 
 ;; intervals
@@ -212,7 +261,7 @@
     :reader get-length
     :initarg :length)))
 
-(defmethod make-interval (&key start end length)
+(defun make-interval (&key start end length)
   (make-instance 'interval
 		 :start start
 		 :end (or end (d+ start length))
@@ -236,21 +285,21 @@
 (defmethod d> ((i1 interval) (i2 interval))
   (d> (get-start i1) (get-start i2)))
 
-(defmethod containsp ((i interval) (d datetime))
-  "Return non-NIL when I contains D."
-  (and (d>= d (get-start i))
-       (d<= d (get-end i))))
+(defmethod containsp ((i interval) (s stamp))
+  "Return non-NIL when I contains S."
+  (and (d>= s (get-start i))
+       (d<= s (get-end i))))
 
 (defmethod containsp ((i1 interval) (i2 interval))
   "Return non-NIL when I1 contains I2."
   (and (containsp i1 (get-start i2))
        (containsp i1 (get-end i2))))
 
-(defmethod connectedp ((i interval) (d datetime))
-  "Return non-NIL when there is no datetime point between I and D."
-  (or (containsp i d)
-      (consecutivep (get-start i) d)
-      (consecutivep (get-end i) d)))
+(defmethod connectedp ((i interval) (s stamp))
+  "Return non-NIL when there is no datetime point between I and S."
+  (or (containsp i s)
+      (consecutivep (get-start i) s)
+      (consecutivep (get-end i) s)))
 
 (defmethod connectedp ((i1 interval) (i2 interval))
   "Return non-NIL when there is no datetime point between I1 and I2."
