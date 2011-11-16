@@ -1,4 +1,4 @@
-(in-package :thhrule)
+(in-package :thhrule.util)
 
 (defparameter +day-of-week+ '(mon tue wed thu fri sat sun))
 (deftype dow () `(member ,@+day-of-week+))

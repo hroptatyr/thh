@@ -3,6 +3,12 @@
 
 (in-package :thhrule)
 
+(defmacro defholiday (&rest ignore))
+(defmacro deftrading-hours (&rest ignore))
+(defmacro defholiday/yearly (&rest ignore))
+
+(defmacro defholiday/once (name &key on)
+  on)
 
 (provide :thhrule)
 
