@@ -1,6 +1,7 @@
 (defpackage :thhrule.util
   (:use #:cl)
   (:export
+   #:make-stamp
    #:make-date
    #:make-datetime
    #:make-interval))
@@ -8,9 +9,11 @@
 (defpackage :cybertiggyr-time
   (:documentation "CyberTiggyr's Time-related library")
   (:use #:cl)
-  (:export #:format-time
-	   #:parse-time
-	   #:recognize-fmt))
+  (:export
+   #:make-fmt-recognizer
+   #:format-time
+   #:parse-time
+   #:recognize-fmt))
 
 (defpackage :thhrule
   (:use
