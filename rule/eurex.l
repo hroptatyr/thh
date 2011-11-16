@@ -9,6 +9,9 @@
    :start (make-date :year year :mon 12 :dom 25)
    :length 2))
 
-(loop for i from 2010 to 2019
-  do
-  (print (xmas i)))
+(defun test ()
+  (loop for i from 2010 to 2019
+    do
+    (print (xmas i))))
+
+(test)
