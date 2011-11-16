@@ -5,5 +5,9 @@
   :author "Sebastian Freundt"
   :licence "3-clause BSD License"
   :components ((:file "package")
-	       (:file "thhrule" :depends-on ("package" "util"))
-	       (:file "util" :depends-on ("package"))))
+	       (:file "time"
+		      :depends-on ("package"))
+	       (:file "util"
+		      :depends-on ("package"))
+	       (:file "thhrule"
+		      :depends-on ("package" "util" "time"))))

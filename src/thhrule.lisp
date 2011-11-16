@@ -8,7 +8,7 @@
 (defmacro defholiday/yearly (&rest ignore))
 
 (defmacro defholiday/once (name &key on)
-  on)
+  `(parse-time ,on))
 
 (provide :thhrule)
 
