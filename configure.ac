@@ -10,7 +10,6 @@ popdef([version])[]dnl
 ])
 AC_INIT([thh], [GIT_VERSION_GEN], [https://github.com/hroptatyr/thh])
 AC_CONFIG_AUX_DIR([.])
-AC_CONFIG_HEADER([src/config.h])
 AC_CONFIG_SRCDIR([src/])
 
 dnl -------------------------------------------------------------------------
