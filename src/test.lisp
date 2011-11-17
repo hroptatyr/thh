@@ -17,3 +17,10 @@
 (new-year/2012 (thhrule::make-stamp :unix 3534580799))
 (new-year/2012 (thhrule::make-stamp :unix 3534580800))
 (new-year/2012 (thhrule::make-stamp :unix 3534580801))
+
+#+sbcl
+(sb-ext:save-lisp-and-die "test.o" :executable t)
+#+clisp
+(ext:saveinitmem "test.o" :executable t :norc t :quiet t)
+#+cmu
+(save-lisp "test.o" :executable t :load-init-file nil)
