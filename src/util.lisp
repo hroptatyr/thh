@@ -1,7 +1,9 @@
-(in-package :thhrule.util)
+(in-package :thhrule)
 
 (defparameter +day-of-week+ '(mon tue wed thu fri sat sun))
 (deftype dow () `(member ,@+day-of-week+))
+
+(defconstant +unix-epoch+ (encode-universal-time 0 0 0 1 1 1970))
 
 (defclass stamp ()
   ((unix
