@@ -121,23 +121,52 @@
 ;; some macros
 (defmacro defholiday (&rest ignore))
 (defmacro deftrading-hours (&rest ignore))
-(defmacro defholiday/yearly (&rest ignore))
 
-(defmacro defholiday/once (name &key from till on)
-  (let ((on/stamp (parse-date on))
-	(from/stamp (parse-dtall from))
-	(till/stamp (parse-dtall till)))
-    ;; produce a closure for now
+(defmacro defholiday/yearly (name &key from till in on for)
+  "Define yearly recurring holidays."
+  (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
+	(till/stamp (or (parse-dtall till) +dusk-of-time+)))
     `(defvar ,name
        (make-rule
-	:from (or ,from/stamp +dawn-of-time+)
-	:till (or ,till/stamp +dusk-of-time+)
-	:next (lambda (stamp)
-		(and
-		 (or (null ,from/stamp) (d>= stamp ,from/stamp))
-		 (or (null ,till/stamp) (d<= stamp ,till/stamp))
-		 (d>= ,on/stamp stamp)
-		 ,on/stamp))))))
+	:from ,from/stamp
+	:till ,till/stamp
+	:next-lambda
+	(lambda (stamp)
+	  (let* ((y (get-year stamp))
+		 (probe (make-date :year y :mon 1 :dom 1)))
+	    (and
+	     (or (null ,from/stamp) (d>= probe ,from/stamp))
+	     (or (null ,till/stamp) (d<= probe ,till/stamp))
+	     (d> probe stamp)
+	     (make-interval :start probe :length 1))))))))
+
+(defmacro defholiday/once (name &key from till on for)
+  "Define a one-off event."
+  (let ((on/stamp (parse-date on))
+	(from/stamp (or (parse-dtall from) +dawn-of-time+))
+	(till/stamp (or (parse-dtall till) +dusk-of-time+)))
+    `(defvar ,name
+       (make-rule
+	:from ,from/stamp
+	:till ,till/stamp
+	:next
+	,(if (and (d>= on/stamp from/stamp) (d<= on/stamp till/stamp))
+	     (make-interval :start on/stamp :length 1)
+	   ;; otherwise the user is obviously confused
+	   nil)))))
+
+;; the metronome
+(defvar metronome +dawn-of-time+)
+
+(defmethod next-event ((r rule))
+  (with-slots (next next-lambda) r
+    (cond
+     ((slot-boundp r 'next)
+      next)
+     ((and (slot-boundp r 'next-lambda) (functionp next-lambda))
+      (setf next (funcall next-lambda metronome)))
+     (t
+      (setf next nil)))))
 
 (provide :thhrule)
 
