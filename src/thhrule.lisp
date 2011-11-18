@@ -122,7 +122,7 @@
 (defmacro defholiday (&rest ignore))
 (defmacro deftrading-hours (&rest ignore))
 
-(defmacro defholiday/yearly (name &key from till in on for)
+(defmacro defholiday/yearly (name &key from till in on)
   "Define yearly recurring holidays."
   (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
 	(till/stamp (or (parse-dtall till) +dusk-of-time+))
@@ -139,6 +139,26 @@
 		(y (max ys yf) (1+ y))
 		(probe))
 	      ((d> (setq probe (make-date :year y :mon ,in/num :dom ,on)) stamp)
+	       (if (d<= probe ,till/stamp)
+		   (make-interval :start probe :length 1)))))))))
+
+(defmacro defholiday/weekly (name &key from till on)
+  "Define weekly recurring holidays, weekends, etc.."
+  (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
+	(till/stamp (or (parse-dtall till) +dusk-of-time+))
+	(on/sym (get-dow/sym on)))
+    `(defvar ,name
+       (make-rule
+	:from ,from/stamp
+	:till ,till/stamp
+	:next-lambda
+	(lambda (stamp)
+	  (do* ((sf (get-unix ,from/stamp))
+		(ss (get-unix stamp))
+		(s (max sf ss) (+ 86400 s))
+		(probe))
+	      ((and (eql (get-dow (setq probe (make-date :unix s))) ',on/sym)
+		    (d> probe stamp))
 	       (if (d<= probe ,till/stamp)
 		   (make-interval :start probe :length 1)))))))))
 

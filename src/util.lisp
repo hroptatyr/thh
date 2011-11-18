@@ -190,6 +190,21 @@
    ((numberp mon)
     mon)))
 
+(defun get-dow/sym (dow)
+  (if (numberp dow)
+      (nth dow +day-of-week+)
+    (intern (cond
+	     ((symbolp dow)
+	      (symbol-name dow))
+	     ((stringp dow)
+	      dow))
+	    'thhrule)))
+
+(defun get-dow/num (dow)
+  (if (numberp dow)
+      dow
+    (position (get-dow/sym dow) +day-of-week+)))
+
 (defun make-date (&key year (mon 1) (dom 1) unix)
   (cond
    (unix

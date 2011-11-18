@@ -7,13 +7,17 @@
   :from "08:00:00 CET" :till "20:00:00 CET")
 
 (defholiday/yearly xmas :in dec :on 25)
-(defholiday/yearly new-year :in jan :on 1 :for 1day)
+(defholiday/yearly new-year :in jan :on 1)
+(defholiday/weekly weekend/sat :on sat)
+(defholiday/weekly weekend/sun :on sun)
 
 (defholiday/once new-year/2012 :on 2012-01-02)
 
 (next-event new-year/2012)
 (next-event new-year)
 (next-event xmas)
+(next-event weekend/sat)
+(next-event weekend/sun)
 
 (in-package :thhrule)
 ;; (make-datetime :unix 0)

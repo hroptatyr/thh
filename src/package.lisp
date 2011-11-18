@@ -18,6 +18,7 @@
    #:defholiday
    #:deftrading-hours
    #:defholiday/yearly
+   #:defholiday/weekly
    #:defholiday/once
 
    #:next-event))
