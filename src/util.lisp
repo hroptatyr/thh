@@ -182,10 +182,13 @@
     u))
 
 (defun get-mon/num (mon)
-  (or (and (symbolp mon)
-	   (position mon +month-of-year+))
-      (and (numberp mon)
-	   mon)))
+  (cond
+   ((stringp mon)
+    (position (intern mon 'thhrule) +month-of-year+))
+   ((symbolp mon)
+    (position (intern (symbol-name mon) 'thhrule) +month-of-year+))
+   ((numberp mon)
+    mon)))
 
 (defun make-date (&key year (mon 1) (dom 1) unix)
   (cond
