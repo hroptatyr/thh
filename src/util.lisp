@@ -1,6 +1,10 @@
 (in-package :thhrule)
 
-(defparameter +day-of-week+ '(mon tue wed thu fri sat sun))
+(defparameter +day-of-week+
+  '(mon tue wed thu fri sat sun))
+(defparameter +month-of-year+
+  '(mir jan feb mar apr may jun jul aug sep oct nov dec))
+
 (deftype dow () `(member ,@+day-of-week+))
 
 (defconstant +unix-epoch+ (encode-universal-time 0 0 0 1 1 1970))
@@ -151,17 +155,45 @@
 (defmethod set-unix :after (unix (s stamp))
   (fixup-human unix s))
 
+(defmethod get-year ((s stamp))
+  ;; temporarily promote
+  (multiple-value-bind (ts tm th dd dm dy wd dst-p tz)
+      (decode-universal-time (get-unix s))
+    dy))
+
+;; (defmethod get-mon :after (dummy (d date))
+;;   1)
+;; 
+;; (defmethod get-dom :after (dummy (d date))
+;;   1)
+;; 
+;; (defmethod get-hour :after (dummy (tm tod))
+;;   0)
+;; 
+;; (defmethod get-min :after (dummy (tm tod))
+;;   0)
+
+(defmethod get-sec ((s (eql 'stamp)))
+  (mod s 60))
+
 (defun make-stamp (&key what unix)
   (let ((u (make-instance (or what 'stamp) :unix unix)))
     (fixup-human unix u)
     u))
+
+(defun get-mon/num (mon)
+  (or (and (symbolp mon)
+	   (position mon +month-of-year+))
+      (and (numberp mon)
+	   mon)))
 
 (defun make-date (&key year (mon 1) (dom 1) unix)
   (cond
    (unix
     (make-stamp :what 'date :unix unix))
    (year
-    (let ((d (make-instance 'date :year year :mon mon :dom dom)))
+    (let* ((mon/num (get-mon/num mon))
+	   (d (make-instance 'date :year year :mon mon/num :dom dom)))
       (fixup-stamp d)
       d))))
 
@@ -179,9 +211,10 @@
    (unix
     (make-stamp :what 'datetime :unix unix))
    (year
-    (let ((dt (make-instance 'datetime
-			     :year year :mon mon :dom dom
-			     :hour hour :min min :sec sec)))
+    (let* ((mon/num (get-mon/num mon))
+	   (dt (make-instance 'datetime
+			      :year year :mon mon/num :dom dom
+			      :hour hour :min min :sec sec)))
       (fixup-stamp dt)
       dt))))
 
