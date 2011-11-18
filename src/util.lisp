@@ -95,13 +95,13 @@
       (setf hour h))))
 
 (defmethod fixup-human ((u integer) (dt datetime))
-  (multiple-value-bind (ts tm th dd dm dy dow dst-p tz)
+  (multiple-value-bind (ts tm th dd dm dy wd dst-p tz)
       (decode-universal-time u)
     (with-slots (year mon dom dow hour min sec) dt
       (setf year dy)
       (setf mon dm)
       (setf dom dd)
-      (setf dow (nth dow +day-of-week+))
+      (setf dow (nth wd +day-of-week+))
       (setf hour th)
       (setf min tm)
       (setf sec ts))))
