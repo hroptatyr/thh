@@ -125,20 +125,22 @@
 (defmacro defholiday/yearly (name &key from till in on for)
   "Define yearly recurring holidays."
   (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
-	(till/stamp (or (parse-dtall till) +dusk-of-time+)))
+	(till/stamp (or (parse-dtall till) +dusk-of-time+))
+	(in/num (get-mon/num in)))
     `(defvar ,name
        (make-rule
 	:from ,from/stamp
 	:till ,till/stamp
 	:next-lambda
 	(lambda (stamp)
-	  (let* ((y (get-year stamp))
-		 (probe (make-date :year y :mon 1 :dom 1)))
-	    (and
-	     (or (null ,from/stamp) (d>= probe ,from/stamp))
-	     (or (null ,till/stamp) (d<= probe ,till/stamp))
-	     (d> probe stamp)
-	     (make-interval :start probe :length 1))))))))
+	  (do* ((ys (get-year stamp))
+		(yf ,(get-year from/stamp))
+		(yt ,(get-year till/stamp))
+		(y (max ys yf) (1+ y))
+		(probe))
+	      ((d> (setq probe (make-date :year y :mon ,in/num :dom ,on)) stamp)
+	       (if (d<= probe ,till/stamp)
+		   (make-interval :start probe :length 1)))))))))
 
 (defmacro defholiday/once (name &key from till on for)
   "Define a one-off event."
