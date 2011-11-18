@@ -57,6 +57,12 @@
 (defparameter +dawn-of-time+ (make-stamp :unix 0))
 (defparameter +dusk-of-time+ (make-stamp :unix 4294967295))
 
+(defconstant +market-open+ t)
+(defconstant +market-close+ t)
+(defconstant +market-force+ t)
+
+(deftype state () `(member +market-open+ +market-close+ +market-force+))
+
 (defclass rule ()
   (
    ;; validity forms first
@@ -72,7 +78,10 @@
     :type function)
    (next
     :initarg :next
-    :type stamp)))
+    :type stamp)
+   (state
+    :initarg :state
+    :type state)))
 
 (defmacro make-rule (&rest stuff)
   `(make-instance 'rule ,@stuff))
@@ -131,6 +140,7 @@
        (make-rule
 	:from ,from/stamp
 	:till ,till/stamp
+	:state '+market-close+
 	:next-lambda
 	(lambda (stamp)
 	  (do* ((ys (get-year stamp))
@@ -151,6 +161,7 @@
        (make-rule
 	:from ,from/stamp
 	:till ,till/stamp
+	:state '+market-close+
 	:next-lambda
 	(lambda (stamp)
 	  (do* ((sf (get-unix ,from/stamp))
@@ -171,6 +182,7 @@
        (make-rule
 	:from ,from/stamp
 	:till ,till/stamp
+	:state '+market-close+
 	:next
 	,(if (and (d>= on/stamp from/stamp) (d<= on/stamp till/stamp))
 	     (make-interval :start on/stamp :length 1)
