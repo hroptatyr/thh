@@ -20,6 +20,6 @@
    #:defholiday/yearly
    #:defholiday/once
 
-   #:next))
+   #:next-event))
 
 ;; package.lisp ends here

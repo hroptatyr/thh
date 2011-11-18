@@ -67,10 +67,12 @@
     :initarg :till
     :initform +dusk-of-time+)
    ;; stream closure, takes stamp and returns the next occurrence
+   (next-lambda
+    :initarg :next-lambda
+    :type function)
    (next
     :initarg :next
-    :type function
-    :accessor next)))
+    :type stamp)))
 
 (defmacro make-rule (&rest stuff)
   `(make-instance 'rule ,@stuff))
