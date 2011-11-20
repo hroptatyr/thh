@@ -335,8 +335,21 @@
 	      "~a - ~a :length ~d"
 	      start end length))))
 
+(defmethod i= ((i1 interval) (i2 interval))
+  (and (d= (get-start i1) (get-start i2))
+       (d= (get-end i1) (get-end i2))))
+
 (defmethod d> ((i1 interval) (i2 interval))
   (d> (get-start i1) (get-start i2)))
+
+(defmethod d>= ((i1 interval) (i2 interval))
+  (d>= (get-start i1) (get-start i2)))
+
+(defmethod d< ((i1 interval) (i2 interval))
+  (not (d>= i1 i2)))
+
+(defmethod d<= ((i1 interval) (i2 interval))
+  (not (d> i1 i2)))
 
 (defmethod containsp ((i interval) (s stamp))
   "Return non-NIL when I contains S."
