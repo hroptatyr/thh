@@ -161,17 +161,23 @@
       (decode-universal-time (get-unix s))
     dy))
 
-;; (defmethod get-mon :after (dummy (d date))
-;;   1)
-;; 
-;; (defmethod get-dom :after (dummy (d date))
-;;   1)
-;; 
-;; (defmethod get-hour :after (dummy (tm tod))
-;;   0)
-;; 
-;; (defmethod get-min :after (dummy (tm tod))
-;;   0)
+(defmethod get-mon ((s stamp))
+  ;; temporarily promote
+  (multiple-value-bind (ts tm th dd dm dy wd dst-p tz)
+      (decode-universal-time (get-unix s))
+    dm))
+
+(defmethod get-dom ((s stamp))
+  ;; temporarily promote
+  (multiple-value-bind (ts tm th dd dm dy wd dst-p tz)
+      (decode-universal-time (get-unix s))
+    dd))
+
+(defmethod get-hour ((s (eql 'stamp)))
+  (floor (mod s 86400) 3600))
+
+(defmethod get-min ((s (eql 'stamp)))
+  (floor (mod s 3600) 60))
 
 (defmethod get-sec ((s (eql 'stamp)))
   (mod s 60))

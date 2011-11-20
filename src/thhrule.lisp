@@ -44,13 +44,13 @@
   (let (u)
     (cond
      ((setq u (cybertiggyr-time::parse-time str +time-recognisers+))
-      (make-date :unix u)))))
+      (make-time :unix u)))))
 
 (defun parse-time/glue-datetime (str)
   (let (u)
     (cond
      ((setq u (cybertiggyr-time::parse-time str +datetime-recognisers+))
-      (make-date :unix u)))))
+      (make-datetime :unix u)))))
 
 
 ;; rule class
@@ -129,7 +129,28 @@
 
 ;; some macros
 (defmacro defholiday (&rest ignore))
-(defmacro deftrading-hours (&rest ignore))
+
+(defmacro deftrading-hours (name &key from till)
+  (let* ((from/stamp (parse-time from))
+	 (till/stamp (parse-time till))
+	 (fu (mod (get-unix from/stamp) 86400))
+	 (tu (mod (get-unix till/stamp) 86400)))
+    `(defvar ,name
+       (make-rule
+	:from +dawn-of-time+
+	:till +dusk-of-time+
+	:state '+market-open+
+	:next-lambda
+	(lambda (stamp)
+	  (let* ((u (get-unix stamp))
+		 (su (mod u 86400))
+		 (stamp/midnight (- u su))
+		 (probe (if (>= su ,fu)
+			    86400
+			  0))
+		 (probe/from (make-datetime :unix (+ stamp/midnight probe ,fu)))
+		 (probe/till (make-datetime :unix (+ stamp/midnight probe ,tu))))
+	    (make-interval :start probe/from :end probe/till)))))))
 
 (defmacro defholiday/yearly (name &key from till in on)
   "Define yearly recurring holidays."
@@ -201,6 +222,20 @@
       (setf next (funcall next-lambda metronome)))
      (t
       (setf next nil)))))
+
+(defmethod next-event* ((r rule))
+  (with-slots (next) r
+    (let ((s (get-start next)))
+      (slot-makunbound r 'next)
+      (setf metronome (make-datetime :unix (get-unix s))))))
+
+(defun sort-ruleset (rs)
+  (stable-sort rs
+	       #'(lambda (a b)
+		   (thhrule::d< (next-event a)
+				(next-event b))))
+  (next-event* (car rs)))
+
 
 (provide :thhrule)
 
