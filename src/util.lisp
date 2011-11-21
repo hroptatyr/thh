@@ -288,6 +288,23 @@
   (or (d< s1 s2)
       (d= s1 s2)))
 
+(defmethod dt= ((s1 stamp) (s2 stamp))
+  (= (get-unix s1) (get-unix s2)))
+
+(defmethod dt> ((s1 stamp) (s2 stamp))
+  (> (get-unix s1) (get-unix s2)))
+
+(defmethod dt>= ((s1 stamp) (s2 stamp))
+  (or (dt= s1 s2)
+      (dt> s1 s2)))
+
+(defmethod dt< ((s1 stamp) (s2 stamp))
+  (not (dt>= s1 s2)))
+
+(defmethod dt<= ((s1 stamp) (s2 stamp))
+  (or (dt= s1 s2)
+      (dt< s1 s2)))
+
 (defmethod d+ ((s stamp) (inc number))
   (make-stamp :what (type-of s) :unix (+ (get-unix s) (* (get-step s) inc))))
 
@@ -345,6 +362,9 @@
   (and (d= (get-start i1) (get-start i2))
        (d= (get-end i1) (get-end i2))))
 
+(defmethod d= ((i1 interval) (i2 interval))
+  (d= (get-start i1) (get-start i2)))
+
 (defmethod d> ((i1 interval) (i2 interval))
   (d> (get-start i1) (get-start i2)))
 
@@ -356,6 +376,21 @@
 
 (defmethod d<= ((i1 interval) (i2 interval))
   (not (d> i1 i2)))
+
+(defmethod dt= ((i1 interval) (i2 interval))
+  (dt= (get-start i1) (get-start i2)))
+
+(defmethod dt> ((i1 interval) (i2 interval))
+  (dt> (get-start i1) (get-start i2)))
+
+(defmethod dt>= ((i1 interval) (i2 interval))
+  (dt>= (get-start i1) (get-start i2)))
+
+(defmethod dt< ((i1 interval) (i2 interval))
+  (not (dt>= i1 i2)))
+
+(defmethod dt<= ((i1 interval) (i2 interval))
+  (not (dt> i1 i2)))
 
 (defmethod containsp ((i interval) (s stamp))
   "Return non-NIL when I contains S."

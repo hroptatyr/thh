@@ -53,16 +53,43 @@
       (make-datetime :unix u)))))
 
 
-;; rule class
-(defparameter +dawn-of-time+ (make-stamp :unix 0))
-(defparameter +dusk-of-time+ (make-stamp :unix 4294967295))
-
+;; states
+(defconstant +market-last+ t)
 (defconstant +market-open+ t)
 (defconstant +market-close+ t)
 (defconstant +market-force+ t)
 
-(deftype state ()
-  `(member +market-last+ +market-open+ +market-close+ +market-force+))
+(defparameter +states+
+  '(+market-last+ +market-open+ +market-close+ +market-force+))
+
+(deftype state () `(member ,@+states+))
+
+(defmethod state< (s1 s2)
+  ;; s1 < s2 iff s1 further left in +states+
+  (member s2 (cdr (member s1 +states+))))
+
+(defmethod state<= (s1 s2)
+  (or (eql s1 s2)
+      (state< s1 s2)))
+
+(defmethod state> (s1 s2)
+  (not (state<= s1 s2)))
+
+(defmethod state>= (s1 s2)
+  (or (eql s1 s2)
+      (state> s1 s2)))
+
+(defun max-state (a b)
+  (if b
+      (if (state> a b)
+	  a
+	b)
+    a))
+
+
+;; rule class
+(defparameter +dawn-of-time+ (make-stamp :unix 0))
+(defparameter +dusk-of-time+ (make-stamp :unix 4294967295))
 
 (defclass rule ()
   (
@@ -82,13 +109,23 @@
     :type stamp)
    (state-start
     :initarg :state-start
+    :reader get-start-state
     :type state)
    (state-end
     :initarg :state-end
-    :type state)))
+    :reader get-end-state
+    :type state)
+   (name
+    :initarg :name
+    :reader get-name)))
 
 (defmacro make-rule (&rest stuff)
   `(make-instance 'rule ,@stuff))
+
+(defmethod print-object ((r rule) out)
+  (with-slots (name) r
+    (print-unreadable-object (r out :type t)
+      (format out "~a" name))))
 
 (defgeneric parse-date (thing))
 (defgeneric parse-time (thing))
@@ -131,6 +168,13 @@
 (defmethod parse-dtall ((s stamp))
   s)
 
+(defmethod midnight ((su integer) &optional next)
+  (let ((sm (mod su 86400)))
+    (+ (- su sm) (or (and next (> sm next) 86400) 0))))
+
+(defmethod midnight ((s stamp) &optional next)
+  (midnight (get-unix s) next))
+
 ;; some macros
 (defmacro defholiday (&rest ignore))
 
@@ -147,16 +191,12 @@
 	:till ,till/stamp
 	:state-start '+market-open+
 	:state-end '+market-close+
+	:name ',name
 	:next-lambda
 	(lambda (stamp)
-	  (let* ((u (get-unix stamp))
-		 (su (mod u 86400))
-		 (stamp/midnight (- u su))
-		 (probe (if (>= su ,ou)
-			    86400
-			  0))
-		 (probe/from (make-datetime :unix (+ stamp/midnight probe ,ou)))
-		 (probe/till (make-datetime :unix (+ stamp/midnight probe ,cu))))
+	  (let* ((stamp/midnight (midnight stamp ,ou))
+		 (probe/from (make-datetime :unix (+ stamp/midnight ,ou)))
+		 (probe/till (make-datetime :unix (+ stamp/midnight ,cu))))
 	    (make-interval :start probe/from :end probe/till)))))))
 
 (defmacro defholiday/yearly (name &key from till in on)
@@ -170,6 +210,7 @@
 	:till ,till/stamp
 	:state-start '+market-close+
 	:state-end '+market-last+
+	:name ',name
 	:next-lambda
 	(lambda (stamp)
 	  (do* ((ys (get-year stamp))
@@ -177,7 +218,7 @@
 		(yt ,(get-year till/stamp))
 		(y (max ys yf) (1+ y))
 		(probe))
-	      ((d> (setq probe (make-date :year y :mon ,in/num :dom ,on)) stamp)
+	      ((d>= (setq probe (make-date :year y :mon ,in/num :dom ,on)) stamp)
 	       (if (d<= probe ,till/stamp)
 		   (make-interval :start probe :length 1)))))))))
 
@@ -192,14 +233,15 @@
 	:till ,till/stamp
 	:state-start '+market-close+
 	:state-end '+market-last+
+	:name ',name
 	:next-lambda
 	(lambda (stamp)
 	  (do* ((sf (get-unix ,from/stamp))
 		(ss (get-unix stamp))
-		(s (max sf ss) (+ 86400 s))
+		(s (midnight (max sf ss) 0) (+ 86400 s))
 		(probe))
 	      ((and (eql (get-dow (setq probe (make-date :unix s))) ',on/sym)
-		    (d> probe stamp))
+		    (d>= probe stamp))
 	       (if (d<= probe ,till/stamp)
 		   (make-interval :start probe :length 1)))))))))
 
@@ -214,6 +256,7 @@
 	:till ,till/stamp
 	:state-start '+market-close+
 	:state-end '+market-last+
+	:name ',name
 	:next
 	,(if (and (d>= on/stamp from/stamp) (d<= on/stamp till/stamp))
 	     (make-interval :start on/stamp :length 1)
@@ -226,6 +269,12 @@
   ((metronome
     :initarg :metronome
     :type stamp)
+   (state
+    :initform +market-last+
+    :type state)
+   (rule
+    :initform nil
+    :type rule)
    (rules
     :initarg :rules
     :type sequence)))
@@ -246,23 +295,69 @@
   (with-slots (metronome) rs
     (with-slots (next next-lambda) r
       (cond
-       ((slot-boundp r 'next)
+       ((and (slot-boundp r 'next)
+	     (dt>= (get-start next) metronome))
 	next)
-       ((and (slot-boundp r 'next-lambda) (functionp next-lambda))
+       ((and (slot-boundp r 'next-lambda)
+	     (functionp next-lambda))
 	(setf next (funcall next-lambda metronome)))
        (t
 	(setf next nil))))))
 
+(defmethod get-start ((r rule))
+  (with-slots (next) r
+    (get-start next)))
+
+(defmethod get-end ((r rule))
+  (with-slots (next) r
+    (get-end next)))
+
+(defmethod metro-next ((rs ruleset) (r rule))
+  "Find next metronome point, given that R is the chosen rule."
+  (with-slots (rules) rs
+    (with-slots ((rnext next) (rstate state-start)) r
+      ;; find first rule whose start > r's start and whose state > r's state
+      (let ((cand
+	     (find-if #'(lambda (a)
+			  (with-slots ((anext next) (astate state-start)) a
+			    (and (dt> (get-start anext) (get-start rnext))
+				 (dt<= (get-start anext) (get-end rnext))
+				 (state> astate rstate))))
+		      rules)))
+	(if cand
+	    (values (get-start cand) (get-start-state cand) cand)
+	  (values (get-end rnext) (get-end-state r) r))))))
+
+(defmethod metro-sort ((rs ruleset) (r1 rule) (r2 rule))
+  (let ((ne1 (next-event/rule rs r1))
+	(ne2 (next-event/rule rs r2)))
+    (or (dt< ne1 ne2)
+	(and (dt= ne1 ne2)
+	     (state> (get-start-state r2)
+		     (get-start-state r2))))))
+
+(defmethod metro-round ((rs ruleset))
+  (with-slots (state rules) rs
+    (stable-sort rules #'(lambda (a b) (metro-sort rs a b)))
+    (let* ((chosen (car rules)))
+      (values (get-start chosen) (get-start-state chosen) chosen))))
+
 (defmethod next-event ((rs ruleset))
-  (with-slots (metronome rules) rs
-    (stable-sort rules
-		 #'(lambda (a b)
-		     (d< (next-event/rule rs a) (next-event/rule rs b))))
-    (let ((r (car rules)))
-      (with-slots (next) r
-	(let ((s (get-start next)))
-	  (slot-makunbound r 'next)
-	  (setf metronome (make-datetime :unix (get-unix s))))))))
+  (with-slots (metronome state rule rules) rs
+    (multiple-value-bind (stamp newst newru) (metro-round rs)
+      (loop
+	do (setf (values metronome state rule)
+		 (cond
+		  ((or (not (eql newst state))
+		       (dt> stamp metronome))
+		   (metro-round rs))
+		  ((dt= stamp metronome)
+		   (metro-next rs rule))
+		  (t
+		   (error "state inconsistent")
+		   return nil)))
+	unless (eql state '+market-last+)
+	return (values metronome state rule)))))
 
 (provide :thhrule)
 

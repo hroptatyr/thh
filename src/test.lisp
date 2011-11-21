@@ -20,8 +20,20 @@
 (next-event eurex-plain)
 (next-event eurex-plain)
 (next-event eurex-plain)
-
-(in-package :thhrule)
+(next-event eurex-plain)
+(next-event eurex-plain)
+(next-event eurex-plain)
+(next-event eurex-plain)
+(next-event eurex-plain)
+(next-event eurex-plain)
+(next-event eurex-plain)
+(next-event eurex-plain)
+(next-event eurex-plain)
+(next-event eurex-plain)
+(next-event eurex-plain)
+(next-event eurex-plain)
+(next-event eurex-plain)
+(next-event eurex-plain)
 
 #+sbcl
 (sb-ext:save-lisp-and-die "test.o" :executable t)

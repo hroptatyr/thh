@@ -29,10 +29,10 @@
 (defvar *default-minute* (constantly 0))
 (proclaim '(type function *default-minute*))
 
-(defvar *default-hour* (constantly 12)
+(defvar *default-hour* (constantly 0)
   "Function which returns the hour to assume when there is no hour.
 The default value of *DEFAULT-HOUR* is a function which returns noon,
-which is 12.")
+which is 0.")
 (proclaim '(type function *default-hour*))
 
 (defvar *default-day*
