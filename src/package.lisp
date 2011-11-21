@@ -22,8 +22,6 @@
    #:defholiday/once
    #:defruleset
 
-   #:next-event
-   #:next-event*
-   #:sort-ruleset))
+   #:next-event))
 
 ;; package.lisp ends here

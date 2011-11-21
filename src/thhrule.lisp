@@ -138,11 +138,13 @@
   (let* ((open/stamp (parse-time open))
 	 (close/stamp (parse-time close))
 	 (ou (mod (get-unix open/stamp) 86400))
-	 (cu (mod (get-unix close/stamp) 86400)))
+	 (cu (mod (get-unix close/stamp) 86400))
+	 (from/stamp (or (parse-dtall from) +dawn-of-time+))
+	 (till/stamp (or (parse-dtall till) +dusk-of-time+)))
     `(defvar ,name
        (make-rule
-	:from +dawn-of-time+
-	:till +dusk-of-time+
+	:from ,from/stamp
+	:till ,till/stamp
 	:state-start '+market-open+
 	:state-end '+market-close+
 	:next-lambda
@@ -218,37 +220,49 @@
 	   ;; otherwise the user is obviously confused
 	   nil)))))
 
-;; rulesets, basically lists
-(defmacro defruleset (name &rest vars)
-  `(defvar ,name (list ,@vars)))
-
 
-;; the metronome
-(defvar metronome +dawn-of-time+)
+;; rulesets
+(defclass ruleset ()
+  ((metronome
+    :initarg :metronome
+    :type stamp)
+   (rules
+    :initarg :rules
+    :type sequence)))
 
-(defmethod next-event ((r rule))
-  (with-slots (next next-lambda) r
-    (cond
-     ((slot-boundp r 'next)
-      next)
-     ((and (slot-boundp r 'next-lambda) (functionp next-lambda))
-      (setf next (funcall next-lambda metronome)))
-     (t
-      (setf next nil)))))
+(defmacro make-ruleset (&rest stuff)
+  `(make-instance 'ruleset ,@stuff))
 
-(defmethod next-event* ((r rule))
-  (with-slots (next) r
-    (let ((s (get-start next)))
-      (slot-makunbound r 'next)
-      (setf metronome (make-datetime :unix (get-unix s))))))
+(defmacro defruleset (name &rest vars
+			   &key (metronome +dawn-of-time+) &allow-other-keys)
+  (let ((rules (remove (cadr (member ':metronome vars))
+		       (remove ':metronome vars))))
+    `(defvar ,name
+       (make-ruleset
+	:metronome ,(parse-dtall metronome)
+	:rules (list ,@rules)))))
 
-(defun sort-ruleset (rs)
-  (stable-sort rs
-	       #'(lambda (a b)
-		   (thhrule::d< (next-event a)
-				(next-event b))))
-  (next-event* (car rs)))
+(defmethod next-event/rule ((rs ruleset) (r rule))
+  (with-slots (metronome) rs
+    (with-slots (next next-lambda) r
+      (cond
+       ((slot-boundp r 'next)
+	next)
+       ((and (slot-boundp r 'next-lambda) (functionp next-lambda))
+	(setf next (funcall next-lambda metronome)))
+       (t
+	(setf next nil))))))
 
+(defmethod next-event ((rs ruleset))
+  (with-slots (metronome rules) rs
+    (stable-sort rules
+		 #'(lambda (a b)
+		     (d< (next-event/rule rs a) (next-event/rule rs b))))
+    (let ((r (car rules)))
+      (with-slots (next) r
+	(let ((s (get-start next)))
+	  (slot-makunbound r 'next)
+	  (setf metronome (make-datetime :unix (get-unix s))))))))
 
 (provide :thhrule)
 

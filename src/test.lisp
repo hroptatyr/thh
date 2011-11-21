@@ -14,11 +14,12 @@
 (defholiday/once new-year/2012 :on 2012-01-02)
 
 (defruleset eurex-plain
+  :metronome "2000-01-01"
   th/eurex new-year/2012 new-year xmas weekend/sat weekend/sun)
 
-(sort-ruleset eurex-plain)
-(sort-ruleset eurex-plain)
-(sort-ruleset eurex-plain)
+(next-event eurex-plain)
+(next-event eurex-plain)
+(next-event eurex-plain)
 
 (in-package :thhrule)
 
