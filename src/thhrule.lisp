@@ -61,7 +61,8 @@
 (defconstant +market-close+ t)
 (defconstant +market-force+ t)
 
-(deftype state () `(member +market-open+ +market-close+ +market-force+))
+(deftype state ()
+  `(member +market-last+ +market-open+ +market-close+ +market-force+))
 
 (defclass rule ()
   (
@@ -79,8 +80,11 @@
    (next
     :initarg :next
     :type stamp)
-   (state
-    :initarg :state
+   (state-start
+    :initarg :state-start
+    :type state)
+   (state-end
+    :initarg :state-end
     :type state)))
 
 (defmacro make-rule (&rest stuff)
@@ -130,26 +134,27 @@
 ;; some macros
 (defmacro defholiday (&rest ignore))
 
-(defmacro deftrading-hours (name &key from till)
-  (let* ((from/stamp (parse-time from))
-	 (till/stamp (parse-time till))
-	 (fu (mod (get-unix from/stamp) 86400))
-	 (tu (mod (get-unix till/stamp) 86400)))
+(defmacro deftrading-hours (name &key from till open close)
+  (let* ((open/stamp (parse-time open))
+	 (close/stamp (parse-time close))
+	 (ou (mod (get-unix open/stamp) 86400))
+	 (cu (mod (get-unix close/stamp) 86400)))
     `(defvar ,name
        (make-rule
 	:from +dawn-of-time+
 	:till +dusk-of-time+
-	:state '+market-open+
+	:state-start '+market-open+
+	:state-end '+market-close+
 	:next-lambda
 	(lambda (stamp)
 	  (let* ((u (get-unix stamp))
 		 (su (mod u 86400))
 		 (stamp/midnight (- u su))
-		 (probe (if (>= su ,fu)
+		 (probe (if (>= su ,ou)
 			    86400
 			  0))
-		 (probe/from (make-datetime :unix (+ stamp/midnight probe ,fu)))
-		 (probe/till (make-datetime :unix (+ stamp/midnight probe ,tu))))
+		 (probe/from (make-datetime :unix (+ stamp/midnight probe ,ou)))
+		 (probe/till (make-datetime :unix (+ stamp/midnight probe ,cu))))
 	    (make-interval :start probe/from :end probe/till)))))))
 
 (defmacro defholiday/yearly (name &key from till in on)
@@ -161,7 +166,8 @@
        (make-rule
 	:from ,from/stamp
 	:till ,till/stamp
-	:state '+market-close+
+	:state-start '+market-close+
+	:state-end '+market-last+
 	:next-lambda
 	(lambda (stamp)
 	  (do* ((ys (get-year stamp))
@@ -182,7 +188,8 @@
        (make-rule
 	:from ,from/stamp
 	:till ,till/stamp
-	:state '+market-close+
+	:state-start '+market-close+
+	:state-end '+market-last+
 	:next-lambda
 	(lambda (stamp)
 	  (do* ((sf (get-unix ,from/stamp))
@@ -203,13 +210,19 @@
        (make-rule
 	:from ,from/stamp
 	:till ,till/stamp
-	:state '+market-close+
+	:state-start '+market-close+
+	:state-end '+market-last+
 	:next
 	,(if (and (d>= on/stamp from/stamp) (d<= on/stamp till/stamp))
 	     (make-interval :start on/stamp :length 1)
 	   ;; otherwise the user is obviously confused
 	   nil)))))
 
+;; rulesets, basically lists
+(defmacro defruleset (name &rest vars)
+  `(defvar ,name (list ,@vars)))
+
+
 ;; the metronome
 (defvar metronome +dawn-of-time+)
 

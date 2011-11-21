@@ -20,6 +20,7 @@
    #:defholiday/yearly
    #:defholiday/weekly
    #:defholiday/once
+   #:defruleset
 
    #:next-event
    #:next-event*
