@@ -24,6 +24,10 @@
    #:defholiday/once
    #:defruleset
 
-   #:next-event))
+   ;; for the rules eval'er
+   #:next-event
+
+   ;; predefined rules
+   #:gregorian-easter))
 
 ;; package.lisp ends here
