@@ -285,14 +285,26 @@
 (defmacro make-ruleset (&rest stuff)
   `(make-instance 'ruleset ,@stuff))
 
-(defmacro defruleset (name &rest vars
-			   &key (metronome +dawn-of-time+) &allow-other-keys)
-  (let ((rules (remove (cadr (member ':metronome vars))
-		       (remove ':metronome vars))))
-    `(defvar ,name
-       (make-ruleset
-	:metronome ,(parse-dtall metronome)
-	:rules (list ,@rules)))))
+(defun ruleset-rules+keys (list)
+  (loop
+    with rules = nil
+    and keys = nil
+    while list
+    do (if (keywordp (car list))
+	   (setq keys (cons (car list) (cons (cadr list) keys))
+		 list (cddr list))
+	 (setq rules (cons (car list) rules)
+	       list (cdr list)))
+    finally (return (values rules keys))))
+
+(defmacro defruleset (name &rest vars+keys)
+  "&key (metronome +dawn-of-time+))"
+  (multiple-value-bind (rules keys) (ruleset-rules+keys vars+keys)
+    (destructuring-bind (&key (metronome +dawn-of-time+)) keys
+      `(defvar ,name
+	 (make-ruleset
+	  :metronome ,(parse-dtall metronome)
+	  :rules (list ,@rules))))))
 
 (defmethod next-event/rule ((rs ruleset) (r rule))
   (with-slots (metronome) rs
