@@ -249,7 +249,7 @@
 	    (if (dt<= probe/from ,till/stamp)
 		(make-interval :start probe/from :end probe/till))))))))
 
-(defmacro defrule/weekly (name &key from till on
+(defmacro defrule/weekly (name &key from till on (for 1)
 			       (start-state '+market-last+)
 			       (end-state '+market-last+))
   (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
@@ -271,9 +271,12 @@
 	      ((and (eql (get-dow (setq probe (make-date :unix s))) ',on/sym)
 		    (dt>= probe stamp))
 	       (if (d<= probe ,till/stamp)
-		   (make-interval :start probe :length 1)))))))))
+		   (make-interval :start probe :length ,for)))))))))
 
 (defmacro defrule/yearly (name &key from till in on
+			       by-year
+			       function
+			       (for 1)
 			       (start-state '+market-last+)
 			       (end-state '+market-last+))
   (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
@@ -296,30 +299,32 @@
 	      ((dt>= (setq probe (make-date :year y :mon ,in/num :dom ,on))
 		     stamp)
 	       (if (d<= probe ,till/stamp)
-		   (make-interval :start probe :length 1)))))))))
+		   (make-interval :start probe :length ,for)))))))))
 
 
-(defmacro defholiday/once (name &key from till on for)
-  `(defrule/once ,name :from ,from :till ,till
-     :on ,on :for ,for
-     :start-state +market-close+ :end-state +market-last+))
+(defmacro defholiday (what name &rest rest)
+  `(,what ,name ,@rest
+     :start-state +market-close+
+     :end-state +market-last+))
 
-(defmacro deftrading-hours (name &key from till open close)
-  `(defrule/daily ,name :from ,from :till ,till
-     :start ,open :end ,close
-     :start-state +market-open+ :end-state +market-close+))
+(defmacro deftrading-hours (name &rest rest &key open close &allow-other-keys)
+  `(defrule/daily ,name ,@rest
+     :start ,open
+     :end ,close
+     :start-state +market-open+
+     :end-state +market-close+
+     :allow-other-keys t))
 
-(defmacro defholiday/weekly (name &key from till on)
+(defmacro defholiday/once (name &rest rest)
+  `(defholiday defrule/once ,name ,@rest))
+
+(defmacro defholiday/weekly (name &rest rest)
   "Define weekly recurring holidays, weekends, etc.."
-  `(defrule/weekly ,name :from ,from :till ,till :on ,on
-     :start-state +market-close+
-     :end-state +market-last+))
+  `(defholiday defrule/weekly ,name ,@rest))
 
-(defmacro defholiday/yearly (name &key from till in on)
+(defmacro defholiday/yearly (name &rest rest)
   "Define yearly recurring holidays."
-  `(defrule/yearly ,name :from ,from :till ,till :in ,in :on ,on
-     :start-state +market-close+
-     :end-state +market-last+))
+  `(defholiday defrule/yearly ,name ,@rest))
 
 
 (defmethod next-event/rule ((metronome stamp) (r rule))

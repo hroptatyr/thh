@@ -11,6 +11,9 @@
    #:cl
    #:cybertiggyr-time)
   (:export
+   #:make-date
+   #:make-time
+   #:make-datetime
    #:defrule/once
    #:defrule/daily
    #:defrule/weekly
