@@ -280,7 +280,9 @@
 	       (if (d<= probe ,till/stamp)
 		   (make-interval :start probe :length 1)))))))))
 
-(defmacro defholiday/once (name &key from till on for)
+(defmacro defrule/once (name &key from till on for
+			     (start-state '+market-last+)
+			     (end-state '+market-last+))
   "Define a one-off event."
   (let ((on/stamp (parse-date on))
 	(from/stamp (or (parse-dtall from) +dawn-of-time+))
@@ -289,14 +291,19 @@
        (make-rule
 	:from ,from/stamp
 	:till ,till/stamp
-	:state-start '+market-close+
-	:state-end '+market-last+
+	:state-start ',start-state
+	:state-end ',end-state
 	:name ',name
 	:next
 	,(if (and (d>= on/stamp from/stamp) (d<= on/stamp till/stamp))
 	     (make-interval :start on/stamp :length 1)
 	   ;; otherwise the user is obviously confused
 	   nil)))))
+
+(defmacro defholiday/once (name &key from till on for)
+  `(defrule/once ,name :from ,from :till ,till
+     :on ,on :for ,for
+     :start-state +market-close+ :end-state +market-last+))
 
 (defmethod next-event/rule ((metronome stamp) (r rule))
   (with-slots (till next next-lambda) r

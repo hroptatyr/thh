@@ -19,6 +19,7 @@
    #:deftrading-hours
    #:defholiday/yearly
    #:defholiday/weekly
+   #:defrule/once
    #:defholiday/once
    #:defruleset
 
