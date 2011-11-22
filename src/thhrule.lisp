@@ -203,6 +203,26 @@
   nil)
 
 ;; some macros
+(defmacro defrule/once (name &key from till on for
+			     (start-state '+market-last+)
+			     (end-state '+market-last+))
+  "Define a one-off event."
+  (let ((on/stamp (parse-date on))
+	(from/stamp (or (parse-dtall from) +dawn-of-time+))
+	(till/stamp (or (parse-dtall till) +dusk-of-time+)))
+    `(defvar ,name
+       (make-rule
+	:from ,from/stamp
+	:till ,till/stamp
+	:state-start ',start-state
+	:state-end ',end-state
+	:name ',name
+	:next
+	,(if (and (d>= on/stamp from/stamp) (d<= on/stamp till/stamp))
+	     (make-interval :start on/stamp :length 1)
+	   ;; otherwise the user is obviously confused
+	   nil)))))
+
 (defmacro defrule/daily (name &key from till start end
 			      (start-state '+market-last+)
 			      (end-state '+market-last+))
@@ -229,13 +249,33 @@
 	    (if (dt<= probe/from ,till/stamp)
 		(make-interval :start probe/from :end probe/till))))))))
 
-(defmacro deftrading-hours (name &key from till open close)
-  `(defrule/daily ,name :from ,from :till ,till
-     :start ,open :end ,close
-     :start-state +market-open+ :end-state +market-close+))
+(defmacro defrule/weekly (name &key from till on
+			       (start-state '+market-last+)
+			       (end-state '+market-last+))
+  (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
+	(till/stamp (or (parse-dtall till) +dusk-of-time+))
+	(on/sym (get-dow/sym on)))
+    `(defvar ,name
+       (make-rule
+	:from ,from/stamp
+	:till ,till/stamp
+	:state-start ',start-state
+	:state-end ',end-state
+	:name ',name
+	:next-lambda
+	(lambda (stamp)
+	  (do* ((sf (get-unix ,from/stamp))
+		(ss (get-unix stamp))
+		(s (midnight (max sf ss) 0) (+ 86400 s))
+		(probe))
+	      ((and (eql (get-dow (setq probe (make-date :unix s))) ',on/sym)
+		    (dt>= probe stamp))
+	       (if (d<= probe ,till/stamp)
+		   (make-interval :start probe :length 1)))))))))
 
-(defmacro defholiday/yearly (name &key from till in on)
-  "Define yearly recurring holidays."
+(defmacro defrule/yearly (name &key from till in on
+			       (start-state '+market-last+)
+			       (end-state '+market-last+))
   (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
 	(till/stamp (or (parse-dtall till) +dusk-of-time+))
 	(in/num (get-mon/num in)))
@@ -243,8 +283,8 @@
        (make-rule
 	:from ,from/stamp
 	:till ,till/stamp
-	:state-start '+market-close+
-	:state-end '+market-last+
+	:state-start ',start-state
+	:state-end ',end-state
 	:name ',name
 	:next-lambda
 	(lambda (stamp)
@@ -258,53 +298,29 @@
 	       (if (d<= probe ,till/stamp)
 		   (make-interval :start probe :length 1)))))))))
 
-(defmacro defholiday/weekly (name &key from till on)
-  "Define weekly recurring holidays, weekends, etc.."
-  (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
-	(till/stamp (or (parse-dtall till) +dusk-of-time+))
-	(on/sym (get-dow/sym on)))
-    `(defvar ,name
-       (make-rule
-	:from ,from/stamp
-	:till ,till/stamp
-	:state-start '+market-close+
-	:state-end '+market-last+
-	:name ',name
-	:next-lambda
-	(lambda (stamp)
-	  (do* ((sf (get-unix ,from/stamp))
-		(ss (get-unix stamp))
-		(s (midnight (max sf ss) 0) (+ 86400 s))
-		(probe))
-	      ((and (eql (get-dow (setq probe (make-date :unix s))) ',on/sym)
-		    (d>= probe stamp))
-	       (if (d<= probe ,till/stamp)
-		   (make-interval :start probe :length 1)))))))))
-
-(defmacro defrule/once (name &key from till on for
-			     (start-state '+market-last+)
-			     (end-state '+market-last+))
-  "Define a one-off event."
-  (let ((on/stamp (parse-date on))
-	(from/stamp (or (parse-dtall from) +dawn-of-time+))
-	(till/stamp (or (parse-dtall till) +dusk-of-time+)))
-    `(defvar ,name
-       (make-rule
-	:from ,from/stamp
-	:till ,till/stamp
-	:state-start ',start-state
-	:state-end ',end-state
-	:name ',name
-	:next
-	,(if (and (d>= on/stamp from/stamp) (d<= on/stamp till/stamp))
-	     (make-interval :start on/stamp :length 1)
-	   ;; otherwise the user is obviously confused
-	   nil)))))
 
 (defmacro defholiday/once (name &key from till on for)
   `(defrule/once ,name :from ,from :till ,till
      :on ,on :for ,for
      :start-state +market-close+ :end-state +market-last+))
+
+(defmacro deftrading-hours (name &key from till open close)
+  `(defrule/daily ,name :from ,from :till ,till
+     :start ,open :end ,close
+     :start-state +market-open+ :end-state +market-close+))
+
+(defmacro defholiday/weekly (name &key from till on)
+  "Define weekly recurring holidays, weekends, etc.."
+  `(defrule/weekly ,name :from ,from :till ,till :on ,on
+     :start-state +market-close+
+     :end-state +market-last+))
+
+(defmacro defholiday/yearly (name &key from till in on)
+  "Define yearly recurring holidays."
+  `(defrule/yearly ,name :from ,from :till ,till :in ,in :on ,on
+     :start-state +market-close+
+     :end-state +market-last+))
+
 
 (defmethod next-event/rule ((metronome stamp) (r rule))
   (with-slots (till next next-lambda) r

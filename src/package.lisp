@@ -11,15 +11,13 @@
    #:cl
    #:cybertiggyr-time)
   (:export
-   #:parse-date
-   #:parse-time
-   #:parse-datetime
-   #:parse-dtall
-   #:defrule/daily
-   #:deftrading-hours
-   #:defholiday/yearly
-   #:defholiday/weekly
    #:defrule/once
+   #:defrule/daily
+   #:defrule/weekly
+   #:defrule/yearly
+   #:deftrading-hours
+   #:defholiday/weekly
+   #:defholiday/yearly
    #:defholiday/once
    #:defruleset
 
