@@ -1,14 +1,12 @@
-(require "asdf")
-(asdf:load-system :thhrule)
+(deftrading-hours th/eurex
+  :from "2000-01-04" :till "2000-01-11"
+  :open "08:00:00" :close "20:00:00")
 
-(use-package :thhrule)
+(defholiday/yearly xmas :in dec :on 25)
+(defholiday/yearly new-year :in jan :on 1)
+(defholiday/weekly weekend/sat :on sat)
+(defholiday/weekly weekend/sun :on sun)
 
-(defun xmas (year)
-  "Covers xmas and boxing day."
-  (make-interval
-   :start (make-date :year year :mon 12 :dom 25)
-   :length 2))
-
-(loop for i from 2010 to 2019
-  do
-  (print (xmas i)))
+(defruleset eurex-simple
+  :metronome "2000-01-01"
+  th/eurex new-year xmas weekend/sat weekend/sun)
