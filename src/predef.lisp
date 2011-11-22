@@ -2,7 +2,7 @@
 (require :thhrule.util)
 (in-package :thhrule)
 
-(defun gregorian-easter (year)
+(defun calc-gregorian-easter (year)
   (let* ((a (mod year 19))
 	 (b (floor year 4))
 	 (c (1+ (floor b 25)))
@@ -11,7 +11,7 @@
     (setq e (+ e (floor (- 29578 a (* e 32)) 1024)))
     (- e (mod (+ (mod year 7) b (- d) e 2) 7))))
 
-(defun julian-easter (year)
+(defun calc-julian-easter (year)
   (let* ((a (mod year 19))
 	 (b (mod year 4))
 	 (c (mod year 7))
@@ -23,21 +23,21 @@
        ;; this is to express things in gregorian
        13)))
 
-(defmacro datify-easter (what suf add)
+(defmacro datify-easter (what &key (add 0) as)
   (flet ((sym-conc (&rest syms)
 	   (intern (apply #'concatenate 'string (mapcar #'symbol-name syms)))))
-    `(defun ,(sym-conc what '-easter/ suf) (year)
-       (let* ((e (+ (,(sym-conc what '-easter) year) ,add))
+    `(defun ,as (year)
+       (let* ((e (+ (,(sym-conc 'calc- what '-easter) year) ,add))
 	      (d (if (< e 32) 3 4)))
 	 (make-date :year year :mon d :dom (if (= d 3) e (- e 31)))))))
 
 ;; convenience funs
-(datify-easter gregorian sun 0)
-(datify-easter gregorian fri -2)
-(datify-easter gregorian mon 1)
-(datify-easter julian sun 0)
-(datify-easter julian fri -2)
-(datify-easter julian mon 1)
+(datify-easter gregorian :as gregorian-easter)
+(datify-easter gregorian :add -2 :as gregorian-good-friday)
+(datify-easter gregorian :add 1 :as gregorian-easter/mon)
+(datify-easter julian :as julian-easter)
+(datify-easter julian :add -2 :as julian-good-friday)
+(datify-easter julian :add 1 :as julian-easter/mon)
 
 (provide :thhrule.predef)
 
