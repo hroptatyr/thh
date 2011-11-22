@@ -30,6 +30,9 @@
    ;; predefined rules
    #:gregorian-easter/fri
    #:gregorian-easter/sun
-   #:gregorian-easter/mon))
+   #:gregorian-easter/mon
+   #:julian-easter/fri
+   #:julian-easter/sun
+   #:julian-easter/mon))
 
 ;; package.lisp ends here
