@@ -28,6 +28,8 @@
    #:next-event
 
    ;; predefined rules
-   #:gregorian-easter))
+   #:gregorian-easter/fri
+   #:gregorian-easter/sun
+   #:gregorian-easter/mon))
 
 ;; package.lisp ends here
