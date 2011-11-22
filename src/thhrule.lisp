@@ -296,16 +296,19 @@
 
 (defmethod next-event/rule ((rs ruleset) (r rule))
   (with-slots (metronome) rs
-    (with-slots (next next-lambda) r
-      (cond
-       ((and (slot-boundp r 'next)
-	     (or (null next) (dt>= (get-start next) metronome)))
-	next)
-       ((and (slot-boundp r 'next-lambda)
-	     (functionp next-lambda))
-	(setf next (funcall next-lambda metronome)))
-       (t
-	(setf next nil))))))
+    (with-slots (till next next-lambda) r
+      (setf next
+	    (cond
+	     ((dt> metronome till)
+	      nil)
+	     ((and (slot-boundp r 'next)
+		   (or (null next) (dt>= (get-start next) metronome)))
+	      next)
+	     ((and (slot-boundp r 'next-lambda)
+		   (functionp next-lambda))
+	      (funcall next-lambda metronome))
+	     (t
+	      nil))))))
 
 (defmethod get-start ((r rule))
   (with-slots (next) r
@@ -323,10 +326,16 @@
 
 ;; aux methods
 (defmethod dt< ((i1 interval) (i2 (eql nil)))
-  (constantly t))
+  t)
 
 (defmethod dt< ((i1 (eql nil)) (i2 interval))
-  (constantly nil))
+  nil)
+
+(defmethod dt= ((s1 interval) (s2 (eql nil)))
+  nil)
+
+(defmethod dt= ((s1 (eql nil)) (s2 interval))
+  nil)
 
 (defmethod metro-next ((rs ruleset) (r rule))
   "Find next metronome point, given that R is the chosen rule."
@@ -336,9 +345,13 @@
       (let ((cand
 	     (find-if #'(lambda (a)
 			  (with-slots ((anext next) (astate state-start)) a
-			    (and (dt> (get-start anext) (get-start rnext))
-				 (dt<= (get-start anext) (get-end rnext))
-				 (state> astate rstate))))
+			    (let ((astart (get-start anext))
+				  (rstart (get-start rnext))
+				  (rend (get-end rnext)))
+			      (and astart
+				   (dt> astart rstart)
+				   (dt<= astart rend)
+				   (state> astate rstate)))))
 		      rules)))
 	(if cand
 	    (values (get-start cand) (get-start-state cand) cand)
@@ -347,15 +360,19 @@
 (defmethod metro-sort ((rs ruleset) (r1 rule) (r2 rule))
   (let ((ne1 (next-event/rule rs r1))
 	(ne2 (next-event/rule rs r2)))
-    (or (dt< ne1 ne2)
-	(and (dt= ne1 ne2)
-	     (state> (get-start-state r2)
-		     (get-start-state r2))))))
+    (cond
+     ((dt< ne1 ne2)
+      t)
+     ((dt= ne1 ne2)
+      (state> (get-start-state r1) (get-start-state r2))))))
 
 (defmethod metro-round ((rs ruleset))
   (with-slots (state rules) rs
     (stable-sort rules #'(lambda (a b) (metro-sort rs a b)))
     (let* ((chosen (car rules)))
+      (when (null (get-start chosen))
+	(print "ALARM")
+	(print chosen))
       (values (get-start chosen) (get-start-state chosen) chosen))))
 
 (defmethod next-event ((rs ruleset))

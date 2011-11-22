@@ -4,7 +4,7 @@
 (use-package :thhrule)
 
 (deftrading-hours th/eurex
-  :from "2000-01-04" :till "2000-01-08"
+  :from "2000-01-04" :till "2000-01-11"
   :open "08:00:00" :close "20:00:00")
 
 (defholiday/yearly xmas :in dec :on 25)
@@ -18,6 +18,9 @@
   :metronome "2000-01-01"
   th/eurex new-year/2012 new-year xmas weekend/sat weekend/sun)
 
+(next-event eurex-plain)
+(next-event eurex-plain)
+(next-event eurex-plain)
 (next-event eurex-plain)
 (next-event eurex-plain)
 (next-event eurex-plain)
