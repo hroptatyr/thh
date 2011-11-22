@@ -380,7 +380,8 @@
 
 (defmethod metro-round ((rs ruleset))
   (with-slots (state rules) rs
-    (stable-sort rules #'(lambda (a b) (metro-sort rs a b)))
+    ;; stable-sort needs #'setf'ing under sbcl
+    (setf rules (stable-sort rules #'(lambda (a b) (metro-sort rs a b))))
     (let* ((chosen (car rules))
 	   (chostart (get-start chosen)))
       (if chostart
