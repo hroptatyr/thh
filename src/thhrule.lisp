@@ -282,25 +282,32 @@
   (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
 	(till/stamp (or (parse-dtall till) +dusk-of-time+))
 	(in/num (get-mon/num in)))
-    `(defvar ,name
-       (make-rule
-	:from ,from/stamp
-	:till ,till/stamp
-	:state-start ',start-state
-	:state-end ',end-state
-	:name ',name
-	:next-lambda
-	(lambda (stamp)
-	  (do* ((ys (get-year stamp))
-		(yf ,(get-year from/stamp))
-		(yt ,(get-year till/stamp))
-		(y (max ys yf) (1+ y))
-		(probe))
-	      ((dt>= (setq probe (make-date :year y :mon ,in/num :dom ,on))
-		     stamp)
-	       (if (d<= probe ,till/stamp)
-		   (make-interval :start probe :length ,for)))))))))
-
+    (let ((probe-fun
+	   (cond
+	    ((null function)
+	     (lambda (year)
+	       (make-date :year year :mon in/num :dom on)))
+	    ((eql (car function) 'function)
+	     (eval function))
+	    (t
+	     (error "~a is not a function" function)))))
+      `(defvar ,name
+	 (make-rule
+	   :from ,from/stamp
+	   :till ,till/stamp
+	   :state-start ',start-state
+	   :state-end ',end-state
+	   :name ',name
+	   :next-lambda
+	   (lambda (stamp)
+	     (do* ((ys (get-year stamp))
+		   (yf ,(get-year from/stamp))
+		   (yt ,(get-year till/stamp))
+		   (y (max ys yf) (1+ y))
+		   (probe))
+		 ((dt>= (setq probe (funcall ,probe-fun y)) stamp)
+		  (if (d<= probe ,till/stamp)
+		      (make-interval :start probe :length ,for))))))))))
 
 (defmacro defholiday (what name &rest rest)
   `(,what ,name ,@rest
