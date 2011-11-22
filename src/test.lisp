@@ -12,11 +12,12 @@
 (defholiday/weekly weekend/sat :on sat)
 (defholiday/weekly weekend/sun :on sun)
 
+(defholiday/once belated-xmas :on 2000-01-06)
 (defholiday/once new-year/2012 :on 2012-01-02)
 
 (defruleset eurex-plain
   :metronome "2000-01-01"
-  th/eurex new-year/2012 new-year xmas weekend/sat weekend/sun)
+  th/eurex new-year/2012 new-year xmas weekend/sat weekend/sun belated-xmas)
 
 (next-event eurex-plain)
 (next-event eurex-plain)

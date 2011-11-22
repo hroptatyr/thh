@@ -328,13 +328,13 @@
 (defmethod dt< ((i1 interval) (i2 (eql nil)))
   t)
 
-(defmethod dt< ((i1 (eql nil)) (i2 interval))
+(defmethod dt< ((i1 (eql nil)) i2)
   nil)
 
 (defmethod dt= ((s1 interval) (s2 (eql nil)))
   nil)
 
-(defmethod dt= ((s1 (eql nil)) (s2 interval))
+(defmethod dt= ((s1 (eql nil)) s2)
   nil)
 
 (defmethod metro-next ((rs ruleset) (r rule))
