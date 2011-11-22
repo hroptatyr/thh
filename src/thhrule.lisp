@@ -369,16 +369,18 @@
 (defmethod metro-round ((rs ruleset))
   (with-slots (state rules) rs
     (stable-sort rules #'(lambda (a b) (metro-sort rs a b)))
-    (let* ((chosen (car rules)))
-      (when (null (get-start chosen))
-	(print "ALARM")
-	(print chosen))
-      (values (get-start chosen) (get-start-state chosen) chosen))))
+    (let* ((chosen (car rules))
+	   (chostart (get-start chosen)))
+      (if chostart
+	  (values chostart (get-start-state chosen) chosen)
+	(values nil '+market-last+ nil)))))
 
 (defmethod next-event ((rs ruleset))
   (with-slots (metronome state rule rules) rs
     (multiple-value-bind (stamp newst newru) (metro-round rs)
       (loop
+	when (null metronome)
+	return nil
 	do (setf (values metronome state rule)
 		 (cond
 		  ((or (not (eql newst state))
@@ -388,8 +390,6 @@
 		   (metro-next rs rule))
 		  (t
 		   (error "state inconsistent"))))
-	when (null metronome)
-	return nil
 	unless (eql state '+market-last+)
 	return (values metronome state rule)))))
 
