@@ -4,6 +4,7 @@
 (use-package :thhrule)
 
 (deftrading-hours th/eurex
+  :from "2000-01-04" :till "2000-01-08"
   :open "08:00:00" :close "20:00:00")
 
 (defholiday/yearly xmas :in dec :on 25)

@@ -194,10 +194,13 @@
 	:name ',name
 	:next-lambda
 	(lambda (stamp)
-	  (let* ((stamp/midnight (midnight stamp ,ou))
+	  (let* ((fu ,(get-unix from/stamp))
+		 (su (get-unix stamp))
+		 (stamp/midnight (midnight (max su fu) ,ou))
 		 (probe/from (make-datetime :unix (+ stamp/midnight ,ou)))
 		 (probe/till (make-datetime :unix (+ stamp/midnight ,cu))))
-	    (make-interval :start probe/from :end probe/till)))))))
+	    (if (dt<= probe/from ,till/stamp)
+		(make-interval :start probe/from :end probe/till))))))))
 
 (defmacro defholiday/yearly (name &key from till in on)
   "Define yearly recurring holidays."
@@ -296,7 +299,7 @@
     (with-slots (next next-lambda) r
       (cond
        ((and (slot-boundp r 'next)
-	     (dt>= (get-start next) metronome))
+	     (or (null next) (dt>= (get-start next) metronome)))
 	next)
        ((and (slot-boundp r 'next-lambda)
 	     (functionp next-lambda))
@@ -308,9 +311,22 @@
   (with-slots (next) r
     (get-start next)))
 
+(defmethod get-start ((r (eql nil)))
+  nil)
+
 (defmethod get-end ((r rule))
   (with-slots (next) r
     (get-end next)))
+
+(defmethod get-end ((r (eql nil)))
+  nil)
+
+;; aux methods
+(defmethod dt< ((i1 interval) (i2 (eql nil)))
+  (constantly t))
+
+(defmethod dt< ((i1 (eql nil)) (i2 interval))
+  (constantly nil))
 
 (defmethod metro-next ((rs ruleset) (r rule))
   "Find next metronome point, given that R is the chosen rule."
@@ -354,8 +370,9 @@
 		  ((dt= stamp metronome)
 		   (metro-next rs rule))
 		  (t
-		   (error "state inconsistent")
-		   return nil)))
+		   (error "state inconsistent"))))
+	when (null metronome)
+	return nil
 	unless (eql state '+market-last+)
 	return (values metronome state rule)))))
 
