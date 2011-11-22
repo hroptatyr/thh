@@ -32,6 +32,7 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 ## the build chain
 AC_PROG_CC
+AC_PROG_CC_C99
 
 ## trivial, no special stuff needed
 dapps="dadd dconv ddiff dgrep dseq dtest"
