@@ -203,21 +203,21 @@
   nil)
 
 ;; some macros
-(defmacro defholiday (&rest ignore))
-
-(defmacro deftrading-hours (name &key from till open close)
-  (let* ((open/stamp (parse-time open))
-	 (close/stamp (parse-time close))
-	 (ou (mod (get-unix open/stamp) 86400))
-	 (cu (mod (get-unix close/stamp) 86400))
+(defmacro defrule/daily (name &key from till start end
+			      (start-state '+market-last+)
+			      (end-state '+market-last+))
+  (let* ((sta/stamp (parse-time start))
+	 (end/stamp (parse-time end))
+	 (ou (mod (get-unix sta/stamp) 86400))
+	 (cu (mod (get-unix end/stamp) 86400))
 	 (from/stamp (or (parse-dtall from) +dawn-of-time+))
 	 (till/stamp (or (parse-dtall till) +dusk-of-time+)))
     `(defvar ,name
        (make-rule
 	:from ,from/stamp
 	:till ,till/stamp
-	:state-start '+market-open+
-	:state-end '+market-close+
+	:state-start ',start-state
+	:state-end ',end-state
 	:name ',name
 	:next-lambda
 	(lambda (stamp)
@@ -228,6 +228,11 @@
 		 (probe/till (make-datetime :unix (+ stamp/midnight ,cu))))
 	    (if (dt<= probe/from ,till/stamp)
 		(make-interval :start probe/from :end probe/till))))))))
+
+(defmacro deftrading-hours (name &key from till open close)
+  `(defrule/daily ,name :from ,from :till ,till
+     :start ,open :end ,close
+     :start-state +market-open+ :end-state +market-close+))
 
 (defmacro defholiday/yearly (name &key from till in on)
   "Define yearly recurring holidays."

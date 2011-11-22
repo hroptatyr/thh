@@ -15,7 +15,7 @@
    #:parse-time
    #:parse-datetime
    #:parse-dtall
-   #:defholiday
+   #:defrule/daily
    #:deftrading-hours
    #:defholiday/yearly
    #:defholiday/weekly

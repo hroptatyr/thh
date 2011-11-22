@@ -15,9 +15,14 @@
 (defholiday/once belated-xmas :on 2000-01-06)
 (defholiday/once new-year/2012 :on 2012-01-02)
 
+(defrule/daily settle
+  :start "22:05:00" :end "22:10:00"
+  :start-state +market-force+ :end-state +market-close+)
+
 (defruleset eurex-plain
   :metronome "2000-01-01"
-  th/eurex new-year/2012 new-year xmas weekend/sat weekend/sun belated-xmas)
+  th/eurex new-year/2012 new-year xmas weekend/sat settle
+  weekend/sun belated-xmas)
 
 (next-event eurex-plain)
 (next-event eurex-plain)
