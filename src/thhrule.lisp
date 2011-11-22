@@ -253,7 +253,8 @@
 		(yt ,(get-year till/stamp))
 		(y (max ys yf) (1+ y))
 		(probe))
-	      ((d>= (setq probe (make-date :year y :mon ,in/num :dom ,on)) stamp)
+	      ((dt>= (setq probe (make-date :year y :mon ,in/num :dom ,on))
+		     stamp)
 	       (if (d<= probe ,till/stamp)
 		   (make-interval :start probe :length 1)))))))))
 

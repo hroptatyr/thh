@@ -45,6 +45,9 @@
 (next-event eurex-plain)
 (next-event eurex-plain)
 
+(in-package :thhrule)
+(next-event/rule (make-datetime :unix 3155753100) common-lisp-user::new-year)
+
 #+sbcl
 (sb-ext:save-lisp-and-die "test.o" :executable t)
 #+clisp
