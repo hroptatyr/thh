@@ -1,8 +1,19 @@
-(require "asdf")
-(asdf:load-system :thhrule)
+;; (require "asdf")
+;; (asdf:load-system :thhrule)
+
+(setq *load-pathname*
+      (or
+       #+sbcl (posix-getenv "srcdir")
+       #+clisp (getenv "srcdir")
+       nil))
+
+(load (concatenate 'string *load-pathname* "/package.lisp"))
+(load (concatenate 'string *load-pathname* "/thhrule.lisp"))
+(load (concatenate 'string *load-pathname* "/predef.lisp"))
 
 (use-package :thhrule)
 
+
 (defun my-command-line ()
   (or 
    #+clisp *args*

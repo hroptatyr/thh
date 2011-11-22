@@ -10,4 +10,4 @@ thhcc_SOURCES += thhcc.lisp
 thhcc_LINK = echo
 
 .lisp.o:
-	$(LISPFLAV) < $<
+	srcdir=$(srcdir) $(LISPFLAV) < $<
