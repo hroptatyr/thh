@@ -175,6 +175,33 @@
 (defmethod midnight ((s stamp) &optional next)
   (midnight (get-unix s) next))
 
+(defmethod get-start ((r rule))
+  (with-slots (next) r
+    (get-start next)))
+
+(defmethod get-start ((r (eql nil)))
+  nil)
+
+(defmethod get-end ((r rule))
+  (with-slots (next) r
+    (get-end next)))
+
+(defmethod get-end ((r (eql nil)))
+  nil)
+
+;; aux methods, eql specialisers
+(defmethod dt< ((i1 interval) (i2 (eql nil)))
+  t)
+
+(defmethod dt< ((i1 (eql nil)) i2)
+  nil)
+
+(defmethod dt= ((s1 interval) (s2 (eql nil)))
+  nil)
+
+(defmethod dt= ((s1 (eql nil)) s2)
+  nil)
+
 ;; some macros
 (defmacro defholiday (&rest ignore))
 
@@ -266,6 +293,21 @@
 	   ;; otherwise the user is obviously confused
 	   nil)))))
 
+(defmethod next-event/rule ((metronome stamp) (r rule))
+  (with-slots (till next next-lambda) r
+    (setf next
+	  (cond
+	   ((dt> metronome till)
+	    nil)
+	   ((and (slot-boundp r 'next)
+		 (or (null next) (dt>= (get-start next) metronome)))
+	    next)
+	   ((and (slot-boundp r 'next-lambda)
+		 (functionp next-lambda))
+	    (funcall next-lambda metronome))
+	   (t
+	    nil)))))
+
 
 ;; rulesets
 (defclass ruleset ()
@@ -306,49 +348,6 @@
 	  :metronome ,(parse-dtall metronome)
 	  :rules (list ,@rules))))))
 
-(defmethod next-event/rule ((rs ruleset) (r rule))
-  (with-slots (metronome) rs
-    (with-slots (till next next-lambda) r
-      (setf next
-	    (cond
-	     ((dt> metronome till)
-	      nil)
-	     ((and (slot-boundp r 'next)
-		   (or (null next) (dt>= (get-start next) metronome)))
-	      next)
-	     ((and (slot-boundp r 'next-lambda)
-		   (functionp next-lambda))
-	      (funcall next-lambda metronome))
-	     (t
-	      nil))))))
-
-(defmethod get-start ((r rule))
-  (with-slots (next) r
-    (get-start next)))
-
-(defmethod get-start ((r (eql nil)))
-  nil)
-
-(defmethod get-end ((r rule))
-  (with-slots (next) r
-    (get-end next)))
-
-(defmethod get-end ((r (eql nil)))
-  nil)
-
-;; aux methods
-(defmethod dt< ((i1 interval) (i2 (eql nil)))
-  t)
-
-(defmethod dt< ((i1 (eql nil)) i2)
-  nil)
-
-(defmethod dt= ((s1 interval) (s2 (eql nil)))
-  nil)
-
-(defmethod dt= ((s1 (eql nil)) s2)
-  nil)
-
 (defmethod metro-next ((rs ruleset) (r rule))
   "Find next metronome point, given that R is the chosen rule."
   (with-slots (rules) rs
@@ -369,9 +368,9 @@
 	    (values (get-start cand) (get-start-state cand) cand)
 	  (values (get-end rnext) (get-end-state r) r))))))
 
-(defmethod metro-sort ((rs ruleset) (r1 rule) (r2 rule))
-  (let ((ne1 (next-event/rule rs r1))
-	(ne2 (next-event/rule rs r2)))
+(defmethod metro-sort ((metronome stamp) (r1 rule) (r2 rule))
+  (let ((ne1 (next-event/rule metronome r1))
+	(ne2 (next-event/rule metronome r2)))
     (cond
      ((dt< ne1 ne2)
       t)
@@ -379,9 +378,9 @@
       (state> (get-start-state r1) (get-start-state r2))))))
 
 (defmethod metro-round ((rs ruleset))
-  (with-slots (state rules) rs
+  (with-slots (metronome state rules) rs
     ;; stable-sort needs #'setf'ing under sbcl
-    (setf rules (stable-sort rules #'(lambda (a b) (metro-sort rs a b))))
+    (setf rules (stable-sort rules #'(lambda (a b) (metro-sort metronome a b))))
     (let* ((chosen (car rules))
 	   (chostart (get-start chosen)))
       (if chostart
