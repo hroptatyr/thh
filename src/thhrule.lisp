@@ -1,6 +1,6 @@
-(require "asdf")
-(require :thhrule.util)
-(require :cybertiggyr-time)
+(require "package")
+(require "util")
+(require "time")
 (in-package :thhrule)
 
 

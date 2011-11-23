@@ -39,4 +39,5 @@
    #:julian-easter
    #:julian-easter/mon))
 
+(provide :package)
 ;; package.lisp ends here

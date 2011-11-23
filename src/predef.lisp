@@ -1,5 +1,4 @@
-(require "asdf")
-(require :thhrule.util)
+(require "util")
 (in-package :thhrule)
 
 (defun calc-gregorian-easter (year)

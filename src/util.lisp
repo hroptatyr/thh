@@ -1,3 +1,4 @@
+(require "package")
 (in-package :thhrule)
 
 (defparameter +day-of-week+
