@@ -1,16 +1,6 @@
-;; (require "asdf")
-;; (require :thhrule.util)
-;; (require :cybertiggyr-time)
-
-(setq *load-pathname*
-      (or
-       #+sbcl (posix-getenv "srcdir")
-       #+clisp (getenv "srcdir")
-       nil))
-
-(load (concatenate 'string *load-pathname* "/util.lisp"))
-(load (concatenate 'string *load-pathname* "/time.lisp"))
-
+(require "package")
+(require "util")
+(require "time")
 (in-package :thhrule)
 
 
