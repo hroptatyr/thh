@@ -490,5 +490,6 @@
 	return (values metronome state rule)))))
 
 (provide :thhrule)
+(provide "thhrule")
 
 ;; thhrule.l ends here
