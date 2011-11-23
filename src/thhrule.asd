@@ -9,5 +9,7 @@
 		      :depends-on ("package"))
 	       (:file "util"
 		      :depends-on ("package"))
+	       (:file "predef"
+		      :depends-on ("package" "util"))
 	       (:file "thhrule"
 		      :depends-on ("package" "util" "time"))))

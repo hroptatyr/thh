@@ -11,16 +11,32 @@
    #:cl
    #:cybertiggyr-time)
   (:export
+   #:make-date
+   #:make-time
+   #:make-datetime
+
+   #:defrule
    #:defrule/once
    #:defrule/daily
    #:defrule/weekly
+   #:defrule/monthly
    #:defrule/yearly
    #:deftrading-hours
    #:defholiday/weekly
+   #:defholiday/monthly
    #:defholiday/yearly
    #:defholiday/once
    #:defruleset
 
-   #:next-event))
+   ;; for the rules eval'er
+   #:next-event
+
+   ;; predefined rules
+   #:gregorian-good-friday
+   #:gregorian-easter
+   #:gregorian-easter/mon
+   #:julian-good-friday
+   #:julian-easter
+   #:julian-easter/mon))
 
 ;; package.lisp ends here

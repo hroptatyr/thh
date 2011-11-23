@@ -86,6 +86,13 @@
 	b)
     a))
 
+(defun max-stamp (a b)
+  (if b
+      (if (dt> a b)
+	  a
+	b)
+    a))
+
 
 ;; rule class
 (defparameter +dawn-of-time+ (make-stamp :unix 0))
@@ -203,6 +210,10 @@
   nil)
 
 ;; some macros
+(defmacro defrule (name &rest rest)
+  "Define an event."
+  `(defvar ,name (make-rule ,@rest)))
+
 (defmacro defrule/once (name &key from till on for
 			     (start-state '+market-last+)
 			     (end-state '+market-last+))
@@ -210,18 +221,17 @@
   (let ((on/stamp (parse-date on))
 	(from/stamp (or (parse-dtall from) +dawn-of-time+))
 	(till/stamp (or (parse-dtall till) +dusk-of-time+)))
-    `(defvar ,name
-       (make-rule
-	:from ,from/stamp
-	:till ,till/stamp
-	:state-start ',start-state
-	:state-end ',end-state
-	:name ',name
-	:next
-	,(if (and (d>= on/stamp from/stamp) (d<= on/stamp till/stamp))
-	     (make-interval :start on/stamp :length 1)
-	   ;; otherwise the user is obviously confused
-	   nil)))))
+    `(defrule ,name
+       :from ,from/stamp
+       :till ,till/stamp
+       :state-start ',start-state
+       :state-end ',end-state
+       :name ',name
+       :next
+       ,(if (and (d>= on/stamp from/stamp) (d<= on/stamp till/stamp))
+	    (make-interval :start on/stamp :length 1)
+	  ;; otherwise the user is obviously confused
+	  nil))))
 
 (defmacro defrule/daily (name &key from till start end
 			      (start-state '+market-last+)
@@ -232,94 +242,139 @@
 	 (cu (mod (get-unix end/stamp) 86400))
 	 (from/stamp (or (parse-dtall from) +dawn-of-time+))
 	 (till/stamp (or (parse-dtall till) +dusk-of-time+)))
-    `(defvar ,name
-       (make-rule
-	:from ,from/stamp
-	:till ,till/stamp
-	:state-start ',start-state
-	:state-end ',end-state
-	:name ',name
-	:next-lambda
-	(lambda (stamp)
-	  (let* ((fu ,(get-unix from/stamp))
-		 (su (get-unix stamp))
-		 (stamp/midnight (midnight (max su fu) ,ou))
-		 (probe/from (make-datetime :unix (+ stamp/midnight ,ou)))
-		 (probe/till (make-datetime :unix (+ stamp/midnight ,cu))))
-	    (if (dt<= probe/from ,till/stamp)
-		(make-interval :start probe/from :end probe/till))))))))
+    `(defrule ,name
+       :from ,from/stamp
+       :till ,till/stamp
+       :state-start ',start-state
+       :state-end ',end-state
+       :name ',name
+       :next-lambda
+       (lambda (stamp)
+	 (let* ((fu ,(get-unix from/stamp))
+		(su (get-unix stamp))
+		(stamp/midnight (midnight (max su fu) ,ou))
+		(probe/from (make-datetime :unix (+ stamp/midnight ,ou)))
+		(probe/till (make-datetime :unix (+ stamp/midnight ,cu))))
+	   (if (dt<= probe/from ,till/stamp)
+	       (make-interval :start probe/from :end probe/till)))))))
 
-(defmacro defrule/weekly (name &key from till on
+(defmacro defrule/weekly (name &key from till on (for 1)
 			       (start-state '+market-last+)
 			       (end-state '+market-last+))
   (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
 	(till/stamp (or (parse-dtall till) +dusk-of-time+))
 	(on/sym (get-dow/sym on)))
-    `(defvar ,name
-       (make-rule
-	:from ,from/stamp
-	:till ,till/stamp
-	:state-start ',start-state
-	:state-end ',end-state
-	:name ',name
-	:next-lambda
-	(lambda (stamp)
-	  (do* ((sf (get-unix ,from/stamp))
-		(ss (get-unix stamp))
-		(s (midnight (max sf ss) 0) (+ 86400 s))
-		(probe))
-	      ((and (eql (get-dow (setq probe (make-date :unix s))) ',on/sym)
-		    (dt>= probe stamp))
-	       (if (d<= probe ,till/stamp)
-		   (make-interval :start probe :length 1)))))))))
+    `(defrule ,name
+       :from ,from/stamp
+       :till ,till/stamp
+       :state-start ',start-state
+       :state-end ',end-state
+       :name ',name
+       :next-lambda
+       (lambda (stamp)
+	 (do* ((sf (get-unix ,from/stamp))
+	       (ss (get-unix stamp))
+	       (s (midnight (max sf ss) 0) (+ 86400 s))
+	       (probe))
+	     ((and (eql (get-dow (setq probe (make-date :unix s))) ',on/sym)
+		   (dt>= probe stamp))
+	      (if (d<= probe ,till/stamp)
+		  (make-interval :start probe :length ,for))))))))
+
+(defmacro defrule/monthly (name &key from till on
+				by-year+month
+				function
+				(for 1)
+				(start-state '+market-last+)
+				(end-state '+market-last+))
+  (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
+	(till/stamp (or (parse-dtall till) +dusk-of-time+)))
+    (let ((probe-fun
+	   (cond
+	    ((null function)
+	     (lambda (year month)
+	       (make-date :year year :mon month :dom on)))
+	    ((eql (car function) 'function)
+	     (eval function))
+	    (t
+	     (error "~a is not a function" function)))))
+      `(defrule ,name
+	 :from ,from/stamp
+	 :till ,till/stamp
+	 :state-start ',start-state
+	 :state-end ',end-state
+	 :name ',name
+	 :next-lambda
+	 (lambda (stamp)
+	   (do* ((ym (max-stamp ,from/stamp stamp))
+		 (m (get-mon ym) (if (> (1+ m) 12) 1 (1+ m)))
+		 (y (get-year ym) (if (= m 1) (1+ y) y))
+		 (probe))
+	       ((dt>= (setq probe (funcall ,probe-fun y m)) stamp)
+		(if (d<= probe ,till/stamp)
+		    (make-interval :start probe :length ,for)))))))))
 
 (defmacro defrule/yearly (name &key from till in on
+			       by-year
+			       function
+			       (for 1)
 			       (start-state '+market-last+)
 			       (end-state '+market-last+))
   (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
 	(till/stamp (or (parse-dtall till) +dusk-of-time+))
 	(in/num (get-mon/num in)))
-    `(defvar ,name
-       (make-rule
-	:from ,from/stamp
-	:till ,till/stamp
-	:state-start ',start-state
-	:state-end ',end-state
-	:name ',name
-	:next-lambda
-	(lambda (stamp)
-	  (do* ((ys (get-year stamp))
-		(yf ,(get-year from/stamp))
-		(yt ,(get-year till/stamp))
-		(y (max ys yf) (1+ y))
-		(probe))
-	      ((dt>= (setq probe (make-date :year y :mon ,in/num :dom ,on))
-		     stamp)
-	       (if (d<= probe ,till/stamp)
-		   (make-interval :start probe :length 1)))))))))
+    (let ((probe-fun
+	   (cond
+	    ((null function)
+	     (lambda (year)
+	       (make-date :year year :mon in/num :dom on)))
+	    ((eql (car function) 'function)
+	     (eval function))
+	    (t
+	     (error "~a is not a function" function)))))
+      `(defrule ,name
+	 :from ,from/stamp
+	 :till ,till/stamp
+	 :state-start ',start-state
+	 :state-end ',end-state
+	 :name ',name
+	 :next-lambda
+	 (lambda (stamp)
+	   (do* ((ys (get-year stamp))
+		 (yf ,(get-year from/stamp))
+		 (y (max ys yf) (1+ y))
+		 (probe))
+	       ((dt>= (setq probe (funcall ,probe-fun y)) stamp)
+		(if (d<= probe ,till/stamp)
+		    (make-interval :start probe :length ,for)))))))))
 
+(defmacro defholiday (what name &rest rest)
+  `(,what ,name ,@rest
+     :start-state +market-close+
+     :end-state +market-last+))
 
-(defmacro defholiday/once (name &key from till on for)
-  `(defrule/once ,name :from ,from :till ,till
-     :on ,on :for ,for
-     :start-state +market-close+ :end-state +market-last+))
+(defmacro deftrading-hours (name &rest rest &key open close &allow-other-keys)
+  `(defrule/daily ,name ,@rest
+     :start ,open
+     :end ,close
+     :start-state +market-open+
+     :end-state +market-close+
+     :allow-other-keys t))
 
-(defmacro deftrading-hours (name &key from till open close)
-  `(defrule/daily ,name :from ,from :till ,till
-     :start ,open :end ,close
-     :start-state +market-open+ :end-state +market-close+))
+(defmacro defholiday/once (name &rest rest)
+  `(defholiday defrule/once ,name ,@rest))
 
-(defmacro defholiday/weekly (name &key from till on)
+(defmacro defholiday/weekly (name &rest rest)
   "Define weekly recurring holidays, weekends, etc.."
-  `(defrule/weekly ,name :from ,from :till ,till :on ,on
-     :start-state +market-close+
-     :end-state +market-last+))
+  `(defholiday defrule/weekly ,name ,@rest))
 
-(defmacro defholiday/yearly (name &key from till in on)
+(defmacro defholiday/monthly (name &rest rest)
+  "Define monthly recurring holidays."
+  `(defholiday defrule/monthly ,name ,@rest))
+
+(defmacro defholiday/yearly (name &rest rest)
   "Define yearly recurring holidays."
-  `(defrule/yearly ,name :from ,from :till ,till :in ,in :on ,on
-     :start-state +market-close+
-     :end-state +market-last+))
+  `(defholiday defrule/yearly ,name ,@rest))
 
 
 (defmethod next-event/rule ((metronome stamp) (r rule))
