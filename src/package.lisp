@@ -14,6 +14,8 @@
    #:make-date
    #:make-time
    #:make-datetime
+
+   #:defrule
    #:defrule/once
    #:defrule/daily
    #:defrule/weekly
