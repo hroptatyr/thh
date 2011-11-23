@@ -10,8 +10,11 @@ case "${LISPFLAV}" in
 	;;
 *"sbcl")
 	for arg; do
+		srcfile=$(strings "${arg}" | \
+			grep -F "compiled from" | \
+			cut -d'"' -f2)
 		cat <<EOF
-(load #P"${arg}")
+(load #P"${srcfile}")
 EOF
 	done | "${LISPFLAV}"
 	;;
