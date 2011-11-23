@@ -94,6 +94,14 @@
     a))
 
 
+;; sessions and timezones and other auxiliary stuff
+(defmacro deftimezone (name value &optional doc)
+  `(defvar ,name ,value ,doc))
+
+(defmacro defsession (name &optional doc)
+  `(defvar ,name ,doc))
+
+
 ;; rule class
 (defparameter +dawn-of-time+ (make-stamp :unix 0))
 (defparameter +dusk-of-time+ (make-stamp :unix 4294967295))
@@ -353,7 +361,8 @@
      :start-state +market-close+
      :end-state +market-last+))
 
-(defmacro deftrading-hours (name &rest rest &key open close &allow-other-keys)
+(defmacro deftrading-hours (name &optional doc &rest rest
+				 &key open close &allow-other-keys)
   `(defrule/daily ,name ,@rest
      :start ,open
      :end ,close

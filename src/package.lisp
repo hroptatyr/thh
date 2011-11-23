@@ -28,6 +28,9 @@
    #:defholiday/once
    #:defruleset
 
+   #:deftimezone
+   #:defsession
+
    ;; for the rules eval'er
    #:next-event
 
