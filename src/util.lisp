@@ -415,3 +415,6 @@
       (connectedp i1 (get-end i2))))
 
 (provide :thhrule.util)
+(provide "util")
+
+;; util.lisp ends here

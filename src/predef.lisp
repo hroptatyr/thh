@@ -39,5 +39,6 @@
 (datify-easter julian :add 1 :as julian-easter/mon)
 
 (provide :thhrule.predef)
+(provide "predef")
 
 ;; predef.lisp ends here

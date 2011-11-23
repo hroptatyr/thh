@@ -1266,4 +1266,6 @@ If the string can't be recognized, return NIL."
       nil)))
 
 (provide :cybertiggyr-time)       
+(provide "time")
+
 ;;; --- end of file ---

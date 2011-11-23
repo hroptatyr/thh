@@ -3,6 +3,8 @@ LISPFLAV = clisp
 noinst_PROGRAMS =
 AM_DEFAULT_SOURCE_EXT = .lisp
 OBJEXT = fas
+CL_COMPILE = $(top_srcdir)/cl_compile.sh $(LISPFLAV)
+CL_LINK = $(top_srcdir)/cl_link.sh $(LISPFLAV)
 
 noinst_PROGRAMS += thhcc
 
@@ -13,10 +15,11 @@ thhcc_SOURCES += time.lisp
 thhcc_SOURCES += predef.lisp
 thhcc_SOURCES += thhrule.lisp
 thhcc_SOURCES += thhcc.lisp
-thhcc_LINK = clisp thhcc
+thhcc_LINK = $(CL_LINK) thhcc
 
 .lisp.o:
 	$(MAKE) $*.fas
 
 .lisp.fas:
-	$(LISPFLAV) -c $< -o $@
+	$(CL_COMPILE) $< $@
+
