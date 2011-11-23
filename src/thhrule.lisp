@@ -86,6 +86,13 @@
 	b)
     a))
 
+(defun max-stamp (a b)
+  (if b
+      (if (dt> a b)
+	  a
+	b)
+    a))
+
 
 ;; rule class
 (defparameter +dawn-of-time+ (make-stamp :unix 0))
@@ -274,6 +281,39 @@
 	      (if (d<= probe ,till/stamp)
 		  (make-interval :start probe :length ,for))))))))
 
+(defmacro defrule/monthly (name &key from till on
+				by-year+month
+				function
+				(for 1)
+				(start-state '+market-last+)
+				(end-state '+market-last+))
+  (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
+	(till/stamp (or (parse-dtall till) +dusk-of-time+)))
+    (let ((probe-fun
+	   (cond
+	    ((null function)
+	     (lambda (year month)
+	       (make-date :year year :mon month :dom on)))
+	    ((eql (car function) 'function)
+	     (eval function))
+	    (t
+	     (error "~a is not a function" function)))))
+      `(defrule ,name
+	 :from ,from/stamp
+	 :till ,till/stamp
+	 :state-start ',start-state
+	 :state-end ',end-state
+	 :name ',name
+	 :next-lambda
+	 (lambda (stamp)
+	   (do* ((ym (max-stamp ,from/stamp stamp))
+		 (m (get-mon ym) (if (> (1+ m) 12) 1 (1+ m)))
+		 (y (get-year ym) (if (= m 1) (1+ y) y))
+		 (probe))
+	       ((dt>= (setq probe (funcall ,probe-fun y m)) stamp)
+		(if (d<= probe ,till/stamp)
+		    (make-interval :start probe :length ,for)))))))))
+
 (defmacro defrule/yearly (name &key from till in on
 			       by-year
 			       function
@@ -302,7 +342,6 @@
 	 (lambda (stamp)
 	   (do* ((ys (get-year stamp))
 		 (yf ,(get-year from/stamp))
-		 (yt ,(get-year till/stamp))
 		 (y (max ys yf) (1+ y))
 		 (probe))
 	       ((dt>= (setq probe (funcall ,probe-fun y)) stamp)
@@ -328,6 +367,10 @@
 (defmacro defholiday/weekly (name &rest rest)
   "Define weekly recurring holidays, weekends, etc.."
   `(defholiday defrule/weekly ,name ,@rest))
+
+(defmacro defholiday/monthly (name &rest rest)
+  "Define monthly recurring holidays."
+  `(defholiday defrule/monthly ,name ,@rest))
 
 (defmacro defholiday/yearly (name &rest rest)
   "Define yearly recurring holidays."

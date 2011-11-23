@@ -19,9 +19,11 @@
    #:defrule/once
    #:defrule/daily
    #:defrule/weekly
+   #:defrule/monthly
    #:defrule/yearly
    #:deftrading-hours
    #:defholiday/weekly
+   #:defholiday/monthly
    #:defholiday/yearly
    #:defholiday/once
    #:defruleset
