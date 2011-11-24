@@ -218,11 +218,11 @@
   nil)
 
 ;; aux methods, eql specialisers
-(defmethod dt< ((i1 interval) (i2 (eql nil)))
-  t)
-
-(defmethod dt< ((i1 (eql nil)) i2)
+(defmethod dt> ((i1 interval) (i2 (eql nil)))
   nil)
+
+(defmethod dt> ((i1 (eql nil)) i2)
+  t)
 
 (defmethod dt= ((s1 interval) (s2 (eql nil)))
   nil)
