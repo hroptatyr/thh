@@ -35,7 +35,10 @@
 	(quit))
 
       ;; real work now
-      (dotimes (i 64)
+      (do ((rs (symbol-value ruleset/sym))
+	   (cutoff (thhrule::make-stamp :unix 4294967294)))
+	  ((thhrule::dt>= (thhrule::metronome-of rs) cutoff)
+	   t)
 	(print (multiple-value-list
 		(thhrule::next-event (symbol-value ruleset/sym)))))))
   (quit))

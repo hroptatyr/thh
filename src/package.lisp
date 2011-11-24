@@ -33,6 +33,7 @@
 
    ;; for the rules eval'er
    #:next-event
+   #:metronome-of
 
    ;; predefined rules
    #:gregorian-good-friday

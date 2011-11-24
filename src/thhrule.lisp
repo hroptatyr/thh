@@ -422,6 +422,7 @@
 (defclass ruleset ()
   ((metronome
     :initarg :metronome
+    :reader metronome-of
     :type stamp)
    (state
     :initform +market-last+
