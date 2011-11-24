@@ -278,14 +278,14 @@
   (let ((step (max (get-step s1) (get-step s2))))
     (> (floor (get-unix s1) step) (floor (get-unix s2) step))))
 
-(defmethod d>= ((s1 stamp) (s2 stamp))
+(defmethod d>= (s1 s2)
   (or (d> s1 s2)
       (d= s1 s2)))
 
-(defmethod d< ((s1 stamp) (s2 stamp))
+(defmethod d< (s1 s2)
   (not (d>= s1 s2)))
 
-(defmethod d<= ((s1 stamp) (s2 stamp))
+(defmethod d<= (s1 s2)
   (or (d< s1 s2)
       (d= s1 s2)))
 
@@ -295,14 +295,14 @@
 (defmethod dt> ((s1 stamp) (s2 stamp))
   (> (get-unix s1) (get-unix s2)))
 
-(defmethod dt>= ((s1 stamp) (s2 stamp))
+(defmethod dt>= (s1 s2)
   (or (dt= s1 s2)
       (dt> s1 s2)))
 
-(defmethod dt< ((s1 stamp) (s2 stamp))
+(defmethod dt< (s1 s2)
   (not (dt>= s1 s2)))
 
-(defmethod dt<= ((s1 stamp) (s2 stamp))
+(defmethod dt<= (s1 s2)
   (or (dt= s1 s2)
       (dt< s1 s2)))
 

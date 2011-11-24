@@ -35,9 +35,13 @@
 	(quit))
 
       ;; real work now
-      (dotimes (i 64)
-	(print (multiple-value-list
-		(thhrule::next-event (symbol-value ruleset/sym)))))))
+      (loop
+	with rs = (symbol-value ruleset/sym)
+	and cutoff = (thhrule::make-stamp :unix 4294967295)
+	and d and s and r
+	while (and (multiple-value-setq (d s r) (thhrule::next-event rs))
+		   (thhrule::dt< (thhrule::metronome-of rs) cutoff))
+	do (format t "~a	~a	~a~%" d s r))))
   (quit))
 
 #+sbcl
