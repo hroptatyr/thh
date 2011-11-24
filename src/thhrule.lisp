@@ -451,7 +451,7 @@
     (destructuring-bind (&key (metronome +dawn-of-time+)) keys
       `(defvar ,name
 	 (make-ruleset
-	  :metronome ,(parse-dtall metronome)
+	  :metronome ,(parse-dtall (eval metronome))
 	  :rules ',(expand-rules rules))))))
 
 (defmethod metro-next ((rs ruleset) (r rule))
