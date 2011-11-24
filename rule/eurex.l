@@ -1,4 +1,5 @@
 (deftimezone XEUR/timezone "Europe/Berlin")
+(defvar XEUR/metronome "1999-01-01")
 
 (defsession full)
 (defsession late1)
@@ -252,6 +253,10 @@
 (defholiday/weekly weekend/sat :on sat)
 (defholiday/weekly weekend/sun :on sun)
 
-(defruleset eurex-simple
-  :metronome "2000-01-01"
+(defruleset XEUR/holidays
+  :metronome XEUR/metronome
   new-year xmas weekend/sat weekend/sun)
+
+(defruleset XEUR/FEU3
+  :metronome XEUR/metronome
+  XEUR/holidays)
