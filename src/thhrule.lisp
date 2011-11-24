@@ -52,6 +52,19 @@
      ((setq u (cybertiggyr-time::parse-time str +datetime-recognisers+))
       (make-datetime :unix u)))))
 
+;; other useful stuff
+(defun split-vals+keys (list)
+  (loop
+    with vals = nil
+    and keys = nil
+    while list
+    do (if (keywordp (car list))
+	   (setq keys (cons (car list) (cons (cadr list) keys))
+		 list (cddr list))
+	 (setq vals (cons (car list) vals)
+	       list (cdr list)))
+    finally (return (values vals keys))))
+
 
 ;; states
 (defconstant +market-last+ t)
@@ -92,6 +105,14 @@
 	  a
 	b)
     a))
+
+
+;; sessions and timezones and other auxiliary stuff
+(defmacro deftimezone (name value &optional doc)
+  `(defvar ,name ,value ,doc))
+
+(defmacro defsession (name &optional doc)
+  `(defvar ,name ,doc))
 
 
 ;; rule class
@@ -353,13 +374,17 @@
      :start-state +market-close+
      :end-state +market-last+))
 
-(defmacro deftrading-hours (name &rest rest &key open close &allow-other-keys)
-  `(defrule/daily ,name ,@rest
-     :start ,open
-     :end ,close
-     :start-state +market-open+
-     :end-state +market-close+
-     :allow-other-keys t))
+(defmacro deftrading-hours (name &rest vals+keys)
+  (multiple-value-bind (vals keys) (split-vals+keys vals+keys)
+    (destructuring-bind (&key open close &allow-other-keys) keys
+      (let ((doc (if (stringp (car vals))
+		   (car vals))))
+	`(defrule/daily ,name ,@keys
+	   :start ,open
+	   :end ,close
+	   :start-state +market-open+
+	   :end-state +market-close+
+	   :allow-other-keys t)))))
 
 (defmacro defholiday/once (name &rest rest)
   `(defholiday defrule/once ,name ,@rest))
@@ -411,26 +436,23 @@
 (defmacro make-ruleset (&rest stuff)
   `(make-instance 'ruleset ,@stuff))
 
-(defun ruleset-rules+keys (list)
-  (loop
-    with rules = nil
-    and keys = nil
-    while list
-    do (if (keywordp (car list))
-	   (setq keys (cons (car list) (cons (cadr list) keys))
-		 list (cddr list))
-	 (setq rules (cons (car list) rules)
-	       list (cdr list)))
-    finally (return (values rules keys))))
+(defun expand-rules (rules)
+  "Expand every ruleset in RULES by its rules."
+  (loop for sym in rules
+    if (eql (type-of (symbol-value sym)) 'ruleset)
+    append (slot-value (symbol-value sym) 'rules)
+    else
+    collect (symbol-value sym)
+    end))
 
 (defmacro defruleset (name &rest vars+keys)
-  "&key (metronome +dawn-of-time+))"
-  (multiple-value-bind (rules keys) (ruleset-rules+keys vars+keys)
+  "&key (metronome +dawn-of-time+)"
+  (multiple-value-bind (rules keys) (split-vals+keys vars+keys)
     (destructuring-bind (&key (metronome +dawn-of-time+)) keys
       `(defvar ,name
 	 (make-ruleset
-	  :metronome ,(parse-dtall metronome)
-	  :rules (list ,@rules))))))
+	  :metronome ,(parse-dtall (eval metronome))
+	  :rules ',(expand-rules rules))))))
 
 (defmethod metro-next ((rs ruleset) (r rule))
   "Find next metronome point, given that R is the chosen rule."
