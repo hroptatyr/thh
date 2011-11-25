@@ -1,6 +1,7 @@
 (require "package")
 (require "util")
 (require "time")
+(require "copy-instance")
 (in-package :thhrule)
 
 
@@ -369,10 +370,18 @@
 		(if (d<= probe ,till/stamp)
 		    (make-interval :start probe :length ,for)))))))))
 
-(defmacro defholiday (what name &rest rest)
-  `(,what ,name ,@rest
-     :start-state +market-close+
-     :end-state +market-last+))
+(defmacro defholiday-fun (name def &optional comment)
+  ;; double backquotes YAY
+  ;; we want
+  ;; (defmacro foo (name &rest rest)
+  ;;   (def name ,@rest
+  ;;        :start-state bla
+  ;;        :end-state bla))
+  `(defmacro ,name (name &rest rest)
+     `(,',def ,name
+	      ,@rest
+	      :start-state +market-close+
+	      :end-state +market-last+)))
 
 (defmacro deftrading-hours (name &rest vals+keys)
   (multiple-value-bind (vals keys) (split-vals+keys vals+keys)
@@ -386,20 +395,43 @@
 	   :end-state +market-close+
 	   :allow-other-keys t)))))
 
-(defmacro defholiday/once (name &rest rest)
-  `(defholiday defrule/once ,name ,@rest))
+(defmacro defholiday (name &rest vals+keys)
+  (multiple-value-bind (vals keys) (split-vals+keys vals+keys)
+    (destructuring-bind (&key in-lieu alias &allow-other-keys) keys
+      (let ((doc (if (stringp (car vals))
+		     (car vals)))
+	    (clone (cond
+		    ((boundp in-lieu)
+		     (symbol-value in-lieu))
+		    ((boundp alias)
+		     (symbol-value alias)))))
+	`(and
+	  (defvar ,name
+	    ,(and clone (copy-instance clone))
+	    ,(or doc "Aliased holiday rule."))
+	  ,(boundp in-lieu)
+	  ;; replace the next-lambda with an in-lieu lambda
+	  (with-slots (next-lambda) ,clone
+	    (setf next-lambda
+		  (lambda (stamp)
+		    (let ((s (funcall next-lambda stamp)))
+		      (with-slots (dow) s
+			(case dow
+			  (sat (make-stamp :unix (+ (get-unix s) 86400 86400)))
+			  (sat (make-stamp :unix (+ (get-unix s) 86400)))
+			  (otherwise s))))))))))))
 
-(defmacro defholiday/weekly (name &rest rest)
-  "Define weekly recurring holidays, weekends, etc.."
-  `(defholiday defrule/weekly ,name ,@rest))
+(defholiday-fun defholiday/once defrule/once
+  "For one off rules.")
 
-(defmacro defholiday/monthly (name &rest rest)
-  "Define monthly recurring holidays."
-  `(defholiday defrule/monthly ,name ,@rest))
+(defholiday-fun defholiday/weekly defrule/weekly
+  "Define weekly recurring holidays, weekends, etc..")
 
-(defmacro defholiday/yearly (name &rest rest)
-  "Define yearly recurring holidays."
-  `(defholiday defrule/yearly ,name ,@rest))
+(defholiday-fun defholiday/monthly defrule/monthly
+  "Define monthly recurring holidays.")
+
+(defholiday-fun defholiday/yearly defrule/yearly
+  "Define yearly recurring holidays.")
 
 
 (defmethod next-event/rule ((metronome stamp) (r rule))
