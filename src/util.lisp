@@ -252,7 +252,7 @@
   (with-slots (dom mon year dow unix) d
     (print-unreadable-object (d out :type t)
       (format out
-	      "~4,'0d-~2,'0d-~2,'0d :dom ~a :unix ~d"
+	      "~4,'0d-~2,'0d-~2,'0d :dow ~a :unix ~d"
 	      year mon dom dow unix))))
 
 (defmethod print-object ((tm tod) out)
@@ -266,7 +266,7 @@
   (with-slots (dom mon year dow unix hour min sec) dt
     (print-unreadable-object (dt out :type t)
       (format out
-	      "~4,'0d-~2,'0d-~2,'0dT~2,'0d:~2,'0d:~2,'0d :dom ~a :unix ~d"
+	      "~4,'0d-~2,'0d-~2,'0dT~2,'0d:~2,'0d:~2,'0d :dow ~a :unix ~d"
 	      year mon dom hour min sec dow unix))))
 
 ;; arithmetic
