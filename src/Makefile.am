@@ -13,6 +13,7 @@ thhcc_SOURCES += package.lisp
 thhcc_SOURCES += util.lisp
 thhcc_SOURCES += time.lisp
 thhcc_SOURCES += predef.lisp
+thhcc_SOURCES += copy-instance.lisp
 thhcc_SOURCES += thhrule.lisp
 thhcc_SOURCES += thhcc.lisp
 thhcc_LINK = $(CL_LINK) thhcc

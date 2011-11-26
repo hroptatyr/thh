@@ -6,10 +6,19 @@
    #:format-time
    #:recognize-fmt))
 
+(defpackage :copy-instance
+  (:documentation "Michael Weber's copy-instance goodness")
+  (:use
+   #:cl
+   #:clos)
+  (:export
+   #:copy-instance))
+
 (defpackage :thhrule
   (:use
    #:cl
-   #:cybertiggyr-time)
+   #:cybertiggyr-time
+   #:copy-instance)
   (:export
    #:make-date
    #:make-time
@@ -22,6 +31,7 @@
    #:defrule/monthly
    #:defrule/yearly
    #:deftrading-hours
+   #:defholiday
    #:defholiday/weekly
    #:defholiday/monthly
    #:defholiday/yearly

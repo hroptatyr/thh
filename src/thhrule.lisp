@@ -1,6 +1,7 @@
 (require "package")
 (require "util")
 (require "time")
+(require "copy-instance")
 (in-package :thhrule)
 
 
@@ -105,6 +106,41 @@
 	  a
 	b)
     a))
+
+(defun make-ymcw (&key year mon dow which)
+  "Like dateutils' ymcw."
+  ;; 	wd01 = (wd_jan01 - 1 + wd01) % 7;
+  ;; 
+  ;; 	/* first WD1 is 1, second WD1 is 8, third WD1 is 15, etc.
+  ;; 	 * so the first WDx with WDx > WD1 is on (WDx - WD1) + 1 */
+  ;; 	res = (that.w + 7 - wd01) % 7 + 1 + 7 * (that.c - 1);
+  ;; 	/* not all months have a 5th X, so check for this */
+  ;; 	if (res > __get_mdays(that.y, that.m)) {
+  ;; 		 /* 5th = 4th in that case */
+  ;; 		res -= 7;
+  ;; 	}
+  ;; 	return res;
+  (let* ((s (make-date :year year :mon mon :dom 1))
+	 (sdow (get-dow/num (get-dow s)))
+	 (dow/num (get-dow/num dow))
+	 (n (make-date :year (+ year (floor (1+ mon) 12)) :mon (1+ mon) :dom 1))
+	 (which/num (cond
+		     ((numberp which)
+		      which)
+		     ((symbolp which)
+		      (let ((sym (intern (symbol-name which) 'thhrule)))
+			(case sym
+			  (1st 1)
+			  (2nd 2)
+			  (3rd 3)
+			  (4th 4)
+			  (last 5)
+			  (otherwise 0))))))
+	 (dom (+ (mod (- (+ dow/num 7) sdow) 7) 1 (* 7 (1- which/num))))
+	 (res (make-date :year year :mon mon :dom dom)))
+    (if (d>= res n)
+	(d+ res -7)
+      res)))
 
 
 ;; sessions and timezones and other auxiliary stuff
@@ -302,7 +338,7 @@
 	      (if (d<= probe ,till/stamp)
 		  (make-interval :start probe :length ,for))))))))
 
-(defmacro defrule/monthly (name &key from till on
+(defmacro defrule/monthly (name &key from till on which
 				by-year+month
 				function
 				(for 1)
@@ -312,9 +348,12 @@
 	(till/stamp (or (parse-dtall till) +dusk-of-time+)))
     (let ((probe-fun
 	   (cond
-	    ((null function)
+	    ((and (null function) (null which))
 	     (lambda (year month)
 	       (make-date :year year :mon month :dom on)))
+	    ((null function)
+	     (lambda (year month)
+	       (make-ymcw :year year :mon month :dow on :which which)))
 	    ((eql (car function) 'function)
 	     (eval function))
 	    (t
@@ -335,7 +374,7 @@
 		(if (d<= probe ,till/stamp)
 		    (make-interval :start probe :length ,for)))))))))
 
-(defmacro defrule/yearly (name &key from till in on
+(defmacro defrule/yearly (name &key from till in on which
 			       by-year
 			       function
 			       (for 1)
@@ -346,9 +385,12 @@
 	(in/num (get-mon/num in)))
     (let ((probe-fun
 	   (cond
-	    ((null function)
+	    ((and (null function) (null which))
 	     (lambda (year)
 	       (make-date :year year :mon in/num :dom on)))
+	    ((null function)
+	     (lambda (year)
+	       (make-ymcw :year year :mon in/num :dow on :which which)))
 	    ((eql (car function) 'function)
 	     (eval function))
 	    (t
@@ -369,10 +411,18 @@
 		(if (d<= probe ,till/stamp)
 		    (make-interval :start probe :length ,for)))))))))
 
-(defmacro defholiday (what name &rest rest)
-  `(,what ,name ,@rest
-     :start-state +market-close+
-     :end-state +market-last+))
+(defmacro defholiday-fun (name def &optional comment)
+  ;; double backquotes YAY
+  ;; we want
+  ;; (defmacro foo (name &rest rest)
+  ;;   (def name ,@rest
+  ;;        :start-state bla
+  ;;        :end-state bla))
+  `(defmacro ,name (name &rest rest)
+     `(,',def ,name
+	      ,@rest
+	      :start-state +market-close+
+	      :end-state +market-last+)))
 
 (defmacro deftrading-hours (name &rest vals+keys)
   (multiple-value-bind (vals keys) (split-vals+keys vals+keys)
@@ -386,20 +436,43 @@
 	   :end-state +market-close+
 	   :allow-other-keys t)))))
 
-(defmacro defholiday/once (name &rest rest)
-  `(defholiday defrule/once ,name ,@rest))
+(defmacro defholiday (name &rest vals+keys)
+  (multiple-value-bind (vals keys) (split-vals+keys vals+keys)
+    (destructuring-bind (&key in-lieu alias &allow-other-keys) keys
+      (let ((doc (if (stringp (car vals))
+		     (car vals)))
+	    (clone (cond
+		    ((boundp in-lieu)
+		     (symbol-value in-lieu))
+		    ((boundp alias)
+		     (symbol-value alias)))))
+	`(and
+	  (defvar ,name
+	    ,(and clone (copy-instance clone))
+	    ,(or doc "Aliased holiday rule."))
+	  ,(boundp in-lieu)
+	  ;; replace the next-lambda with an in-lieu lambda
+	  (with-slots (next-lambda) ,clone
+	    (setf next-lambda
+		  (lambda (stamp)
+		    (let ((s (funcall next-lambda stamp)))
+		      (with-slots (dow) s
+			(case dow
+			  (sat (make-stamp :unix (+ (get-unix s) 86400 86400)))
+			  (sat (make-stamp :unix (+ (get-unix s) 86400)))
+			  (otherwise s))))))))))))
 
-(defmacro defholiday/weekly (name &rest rest)
-  "Define weekly recurring holidays, weekends, etc.."
-  `(defholiday defrule/weekly ,name ,@rest))
+(defholiday-fun defholiday/once defrule/once
+  "For one off rules.")
 
-(defmacro defholiday/monthly (name &rest rest)
-  "Define monthly recurring holidays."
-  `(defholiday defrule/monthly ,name ,@rest))
+(defholiday-fun defholiday/weekly defrule/weekly
+  "Define weekly recurring holidays, weekends, etc..")
 
-(defmacro defholiday/yearly (name &rest rest)
-  "Define yearly recurring holidays."
-  `(defholiday defrule/yearly ,name ,@rest))
+(defholiday-fun defholiday/monthly defrule/monthly
+  "Define monthly recurring holidays.")
+
+(defholiday-fun defholiday/yearly defrule/yearly
+  "Define yearly recurring holidays.")
 
 
 (defmethod next-event/rule ((metronome stamp) (r rule))
