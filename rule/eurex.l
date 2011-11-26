@@ -4,7 +4,7 @@
 (defsession full)
 (defsession late1)
 (defsession late2)
-(defsession rest)
+(defsession post)
 (defsession exer)
 
 
@@ -21,7 +21,7 @@
   :open "17:00:00"
   :close "20:00:00"
   :timezone XEUR/timezone
-  :session rest)
+  :session post)
 
 (deftrading-hours XEUR/CONF/last
   "CONF Futures, last trading day, trading session"
@@ -38,7 +38,7 @@
   :session exer)
 
 
-;; Bobl, Bund, Buxl, Schatz futures
+;; Bobl, Bund, Buxl, Schatz futures (FGBS, FGBM, FGBL, FGBX)
 (deftrading-hours XEUR/Euro/reg
   "Bobl, Bund, Buxl, Schatz Futures, regular trading"
   :open "08:00:00"
@@ -51,7 +51,7 @@
   :open "22:00:00"
   :close "22:30:00"
   :timezone XEUR/timezone
-  :session rest)
+  :session post)
 
 (deftrading-hours XEUR/Euro/last
   "Bobl, Bund, Buxl, Schatz Futures, last trading day, trading session"
@@ -81,7 +81,7 @@
   :open "19:00:00"
   :close "20:00:00"
   :timezone XEUR/timezone
-  :session rest)
+  :session post)
 
 (deftrading-hours XEUR/FEO1/last
   "FEO1 last trading day, trading session"
@@ -104,7 +104,7 @@
   :open "19:00:00"
   :close "20:00:00"
   :timezone XEUR/timezone
-  :session rest)
+  :session post)
 
 (deftrading-hours XEUR/OEU/last
   "OEU last trading day, trading session"
@@ -141,7 +141,7 @@
   :open "19:15:00"
   :close "20:00:00"
   :timezone XEUR/timezone
-  :session rest)
+  :session post)
 
 (deftrading-hours XEUR/EuroFutopt/last
   "Bobl, Bund, Buxl, Schatz futopts, last trading day, trading session"
@@ -178,7 +178,7 @@
   :open "19:00:00"
   :close "20:00:00"
   :timezone XEUR/timezone
-  :session rest)
+  :session post)
 
 (deftrading-hours XEUR/OEU3/last
   "euribor 3m futopts, last trading day, regular trading"
@@ -208,7 +208,7 @@
   :open "19:00:00"
   :close "19:30:00"
   :timezone XEUR/timezone
-  :session rest)
+  :session post)
 
 (deftrading-hours XEUR/EBTP/last
   "Euro-BTP futures, last trading day, regular trading"
@@ -238,7 +238,7 @@
   :open "19:00:00"
   :close "20:00:00"
   :timezone XEUR/timezone
-  :session rest)
+  :session post)
 
 (deftrading-hours XEUR/FEU3/last
   "EURIBOR 3m futures, last trading day"
@@ -248,15 +248,46 @@
   :session full)
 
 
-(defholiday/yearly xmas :in dec :on 25)
+;; all-eurex holidays
+(defholiday/weekly weekend :on sat :for 2)
+(defholiday/yearly easter :function #'gregorian-good-friday :for 4)
+(defholiday/yearly xmas :in dec :on 25 :for 2)
 (defholiday/yearly new-year :in jan :on 1)
-(defholiday/weekly weekend/sat :on sat)
-(defholiday/weekly weekend/sun :on sun)
 
-(defruleset XEUR/holidays
-  :metronome XEUR/metronome
-  new-year xmas weekend/sat weekend/sun)
+;; deriv holidays
+(defholiday/yearly pre-xmas :in dec :on 24)
+(defholiday/yearly pre-new-year :in dec :on 31)
 
-(defruleset XEUR/FEU3
+;; british hols plus GBP cash payments
+(defholiday/yearly labour-day :in may :on 1)
+(defholiday xmas/uk :in-lieu xmas)
+(defholiday new-year/uk :in-lieu new-year)
+(defholiday labour-day/uk :in-lieu labour-day)
+
+(defholiday/yearly XLON/summer-bh :in aug :on mon :which last)
+(defholiday/yearly XLON/spring-bh :in may :on mon :which last)
+(defholiday/yearly XLON/may-day-bh :in may :on mon :which 1st)
+(defholiday/once prince-william-wedding :on "2011-04-29")
+
+;; austrian holidays
+(defholiday/yearly epiphany :in jan :on 6)
+(defholiday/yearly austrian-national :in oct :on 26)
+(defholiday/yearly all-saints :in nov :on 1)
+(defholiday/yearly immaculate-conception :in dec :on 8)
+
+
+;; actual rule sets
+(defruleset XEUR/hols/all
   :metronome XEUR/metronome
-  XEUR/holidays)
+  new-year easter xmas weekend)
+
+(defruleset XEUR/hols/deriv
+  :metronome XEUR/metronome
+  XEUR/hols/all pre-xmas pre-new-year)
+
+(defruleset XEUR/hols/uk
+  :metronome XEUR/metronome
+  XEUR/hols/all xmas/uk new-year/uk labour-day/uk
+  XLON/summer-bh XLON/spring-bh XLON/may-day-bh
+  prince-william-wedding)
+
