@@ -229,6 +229,7 @@
     :type state)
    (in-lieu
     :initform nil
+    :reader in-lieu-of
     :initarg :in-lieu)
    (name
     :initarg :name
@@ -576,6 +577,40 @@
 	  :metronome ,(parse-dtall (eval metronome))
 	  :rules ',(expand-rules rules))))))
 
+(defmethod move-in-lieu ((mover rule) (movee rule))
+  "Move MOVEE to the end of MOVER."
+  (with-slots ((mover-next next)) mover
+    (let ((eo-mover (midnight (get-end mover-next) 0)))
+      (with-slots ((movee-next next)) movee
+	(let ((length (get-length movee-next))
+	      (new-start (make-stamp :what (type-of (get-start movee-next))
+				     :unix eo-mover)))
+	  (setf movee-next
+		(make-interval :start new-start :length length)))))))
+
+(defmethod metro-sort ((metronome stamp) (r1 rule) (r2 rule))
+  "Return T if R1 is sooner than R2."
+  (let ((ne1 (next-event/rule metronome r1))
+	(ne2 (next-event/rule metronome r2)))
+    (cond
+     ((dt< ne1 ne2)
+      t)
+     ((dt= ne1 ne2)
+      (if (in-lieu-of r1)
+	  ;; move r1 after the end of r2
+	  (progn
+	    (move-in-lieu r2 r1)
+	    ;; and return nil
+	    nil)
+	(if (in-lieu-of r2)
+	    ;; move r2 after the end of r1
+	    (progn
+	      (move-in-lieu r1 r2)
+	      ;; and return t
+	      t)
+	  ;; otherwise prefer the bigger state
+	  (state> (get-start-state r1) (get-start-state r2))))))))
+
 (defmethod metro-next ((rs ruleset) (r rule))
   "Find next metronome point, given that R is the chosen rule."
   (with-slots (rules) rs
@@ -596,19 +631,11 @@
 	    (values (get-start cand) (get-start-state cand) cand)
 	  (values (get-end rnext) (get-end-state r) r))))))
 
-(defmethod metro-sort ((metronome stamp) (r1 rule) (r2 rule))
-  (let ((ne1 (next-event/rule metronome r1))
-	(ne2 (next-event/rule metronome r2)))
-    (cond
-     ((dt< ne1 ne2)
-      t)
-     ((dt= ne1 ne2)
-      (state> (get-start-state r1) (get-start-state r2))))))
-
 (defmethod metro-round ((rs ruleset))
   (with-slots (metronome state rules) rs
     ;; stable-sort needs #'setf'ing under sbcl
-    (setf rules (stable-sort rules #'(lambda (a b) (metro-sort metronome a b))))
+    (setf rules (sort rules #'(lambda (a b) (metro-sort metronome a b))))
+    ;; pick a rule
     (let* ((chosen (car rules))
 	   (chostart (get-start chosen)))
       (if chostart
