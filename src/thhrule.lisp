@@ -392,6 +392,7 @@
 (defmacro defrule/monthly (name &key from till on which
 				by-year+month
 				function
+				in-lieu
 				(for 1)
 				(start-state '+market-last+)
 				(end-state '+market-last+))
@@ -415,6 +416,7 @@
 	 :state-start ',start-state
 	 :state-end ',end-state
 	 :name ',name
+	 :in-lieu ,in-lieu
 	 :next-lambda
 	 (lambda (stamp)
 	   (do* ((ym (max-stamp ,from/stamp stamp))
@@ -428,6 +430,7 @@
 (defmacro defrule/yearly (name &key from till in on which
 			       by-year
 			       function
+			       in-lieu
 			       (for 1)
 			       (start-state '+market-last+)
 			       (end-state '+market-last+))
@@ -452,6 +455,7 @@
 	 :state-start ',start-state
 	 :state-end ',end-state
 	 :name ',name
+	 :in-lieu ,in-lieu
 	 :next-lambda
 	 (lambda (stamp)
 	   (do* ((ys (get-year stamp))
