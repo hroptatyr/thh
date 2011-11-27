@@ -142,6 +142,18 @@
 	b)
     a))
 
+(defun get-ultimo (year mon)
+  "Return ultimo of MON in YEAR."
+  (let* ((nmon (1+ mon))
+	 (nyear (+ year (floor nmon 12)))
+	 (nx (make-date :year nyear :mon nmon :dom 1)))
+    (d+ nx -1)))
+
+(defun get-mdays (year mon)
+  "Return the number of days in MON of YEAR."
+  (let ((ult (get-ultimo year mon)))
+    (get-dom ult)))
+
 (defun make-ymcw (&key year mon dow which)
   "Like dateutils' ymcw."
   ;; 	wd01 = (wd_jan01 - 1 + wd01) % 7;
@@ -158,7 +170,6 @@
   (let* ((s (make-date :year year :mon mon :dom 1))
 	 (sdow (get-dow/num (get-dow s)))
 	 (dow/num (get-dow/num dow))
-	 (n (make-date :year (+ year (floor (1+ mon) 12)) :mon (1+ mon) :dom 1))
 	 (which/num (cond
 		     ((numberp which)
 		      which)
@@ -172,10 +183,12 @@
 			  (last 5)
 			  (otherwise 0))))))
 	 (dom (+ (mod (- (+ dow/num 7) sdow) 7) 1 (* 7 (1- which/num))))
-	 (res (make-date :year year :mon mon :dom dom)))
-    (if (d>= res n)
-	(d+ res -7)
-      res)))
+	 (ult (get-mdays year mon)))
+    (make-date :year year
+	       :mon mon
+	       :dom (if (> dom ult)
+			(- dom 7)
+		      dom))))
 
 
 ;; sessions and timezones and other auxiliary stuff
@@ -214,6 +227,9 @@
     :initarg :state-end
     :reader get-end-state
     :type state)
+   (in-lieu
+    :initform nil
+    :initarg :in-lieu)
    (name
     :initarg :name
     :reader get-name)))
@@ -487,15 +503,8 @@
 	    ,(or doc "Aliased holiday rule."))
 	  ,(boundp in-lieu)
 	  ;; replace the next-lambda with an in-lieu lambda
-	  (with-slots (next-lambda) ,clone
-	    (setf next-lambda
-		  (lambda (stamp)
-		    (let ((s (funcall next-lambda stamp)))
-		      (with-slots (dow) s
-			(case dow
-			  (sat (make-stamp :unix (+ (get-unix s) 86400 86400)))
-			  (sat (make-stamp :unix (+ (get-unix s) 86400)))
-			  (otherwise s))))))))))))
+	  (with-slots (in-lieu) ,clone
+	    (setf in-lieu t)))))))
 
 (defholiday-fun defholiday/once defrule/once
   "For one off rules.")
