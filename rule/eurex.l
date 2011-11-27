@@ -260,7 +260,8 @@
 (defholiday/yearly pre-new-year :in dec :on 31)
 
 ;; british hols plus GBP cash payments
-(defholiday xmas/uk :in-lieu xmas)
+(defholiday/yearly xmas/uk :in-lieu t :in dec :on 25)
+(defholiday/yearly boxing-day/uk :in-lieu t :in dec :on 26)
 (defholiday new-year/uk :in-lieu new-year)
 (defholiday labour-day/uk :in-lieu labour-day)
 
@@ -287,7 +288,7 @@
 
 (defruleset XEUR/hols/uk
   :metronome XEUR/metronome
-  XEUR/hols/all xmas/uk new-year/uk labour-day/uk
+  easter weekend xmas/uk boxing-day/uk new-year/uk labour-day/uk
   XLON/summer-bh XLON/spring-bh XLON/may-day-bh
   prince-william-wedding)
 
