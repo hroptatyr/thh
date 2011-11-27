@@ -214,6 +214,9 @@
     :initarg :state-end
     :reader get-end-state
     :type state)
+   (in-lieu
+    :initform nil
+    :initarg :in-lieu)
    (name
     :initarg :name
     :reader get-name)))
@@ -487,15 +490,8 @@
 	    ,(or doc "Aliased holiday rule."))
 	  ,(boundp in-lieu)
 	  ;; replace the next-lambda with an in-lieu lambda
-	  (with-slots (next-lambda) ,clone
-	    (setf next-lambda
-		  (lambda (stamp)
-		    (let ((s (funcall next-lambda stamp)))
-		      (with-slots (dow) s
-			(case dow
-			  (sat (make-stamp :unix (+ (get-unix s) 86400 86400)))
-			  (sat (make-stamp :unix (+ (get-unix s) 86400)))
-			  (otherwise s))))))))))))
+	  (with-slots (in-lieu) ,clone
+	    (setf in-lieu t)))))))
 
 (defholiday-fun defholiday/once defrule/once
   "For one off rules.")
