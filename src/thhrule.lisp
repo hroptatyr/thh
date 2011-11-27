@@ -594,8 +594,13 @@
 	 (choend (get-end chosen))
 	 (covers (remove-if #'(lambda (r)
 				(or (null (in-lieu-of r))
+				    (eql r chosen)
 				    (dt>= (get-start r) choend)))
 			    rules)))
+    ;; reschedule in-lieu holidays, british meaning, i.e. postpone them
+    (loop for r in covers
+      do (move-in-lieu chosen r))
+
     (if chostart
 	(values chostart (get-start-state chosen) chosen)
       (values nil '+market-last+ nil))))
