@@ -588,6 +588,18 @@
 	  (setf movee-next
 		(make-interval :start new-start :length length)))))))
 
+(defun pick-next (rules)
+  (let* ((chosen (car rules))
+	 (chostart (get-start chosen))
+	 (choend (get-end chosen))
+	 (covers (remove-if #'(lambda (r)
+				(or (null (in-lieu-of r))
+				    (dt>= (get-start r) choend)))
+			    rules)))
+    (if chostart
+	(values chostart (get-start-state chosen) chosen)
+      (values nil '+market-last+ nil))))
+
 (defmethod metro-sort ((metronome stamp) (r1 rule) (r2 rule))
   "Return T if R1 is sooner than R2."
   (let ((ne1 (next-event/rule metronome r1))
@@ -596,19 +608,11 @@
      ((dt< ne1 ne2)
       t)
      ((dt= ne1 ne2)
+      ;; in-lieu rules count less
       (if (in-lieu-of r1)
-	  ;; move r1 after the end of r2
-	  (progn
-	    (move-in-lieu r2 r1)
-	    ;; and return nil
-	    nil)
+	  nil
 	(if (in-lieu-of r2)
-	    ;; move r2 after the end of r1
-	    (progn
-	      (move-in-lieu r1 r2)
-	      ;; and return t
-	      t)
-	  ;; otherwise prefer the bigger state
+	    t
 	  (state> (get-start-state r1) (get-start-state r2))))))))
 
 (defmethod metro-next ((rs ruleset) (r rule))
@@ -636,11 +640,7 @@
     ;; stable-sort needs #'setf'ing under sbcl
     (setf rules (sort rules #'(lambda (a b) (metro-sort metronome a b))))
     ;; pick a rule
-    (let* ((chosen (car rules))
-	   (chostart (get-start chosen)))
-      (if chostart
-	  (values chostart (get-start-state chosen) chosen)
-	(values nil '+market-last+ nil)))))
+    (pick-next rules)))
 
 (defmethod next-event ((rs ruleset))
   (with-slots (metronome state rule rules) rs
