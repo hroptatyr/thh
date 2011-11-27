@@ -1,3 +1,38 @@
+;; thhrule -- rule definitions
+;;
+;; Copyright (C) 2011 Sebastian Freundt
+;;
+;; Author:  Sebastian Freundt <freundt@ga-group.nl>
+;;
+;; This file is part of thh and dateutils.
+;;
+;; Redistribution and use in source and binary forms, with or without
+;; modification, are permitted provided that the following conditions
+;; are met:
+;;
+;; 1. Redistributions of source code must retain the above copyright
+;;    notice, this list of conditions and the following disclaimer.
+;;
+;; 2. Redistributions in binary form must reproduce the above copyright
+;;    notice, this list of conditions and the following disclaimer in the
+;;    documentation and/or other materials provided with the distribution.
+;;
+;; 3. Neither the name of the author nor the names of any contributors
+;;    may be used to endorse or promote products derived from this
+;;    software without specific prior written permission.
+;;
+;; THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR
+;; IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+;; WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+;; DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+;; FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+;; CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+;; SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+;; BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+;; WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+;; OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+;; IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 (require "package")
 (require "util")
 (require "time")
@@ -107,6 +142,18 @@
 	b)
     a))
 
+(defun get-ultimo (year mon)
+  "Return ultimo of MON in YEAR."
+  (let* ((nmon (1+ mon))
+	 (nyear (+ year (floor nmon 12)))
+	 (nx (make-date :year nyear :mon nmon :dom 1)))
+    (d+ nx -1)))
+
+(defun get-mdays (year mon)
+  "Return the number of days in MON of YEAR."
+  (let ((ult (get-ultimo year mon)))
+    (get-dom ult)))
+
 (defun make-ymcw (&key year mon dow which)
   "Like dateutils' ymcw."
   ;; 	wd01 = (wd_jan01 - 1 + wd01) % 7;
@@ -123,7 +170,6 @@
   (let* ((s (make-date :year year :mon mon :dom 1))
 	 (sdow (get-dow/num (get-dow s)))
 	 (dow/num (get-dow/num dow))
-	 (n (make-date :year (+ year (floor (1+ mon) 12)) :mon (1+ mon) :dom 1))
 	 (which/num (cond
 		     ((numberp which)
 		      which)
@@ -137,10 +183,12 @@
 			  (last 5)
 			  (otherwise 0))))))
 	 (dom (+ (mod (- (+ dow/num 7) sdow) 7) 1 (* 7 (1- which/num))))
-	 (res (make-date :year year :mon mon :dom dom)))
-    (if (d>= res n)
-	(d+ res -7)
-      res)))
+	 (ult (get-mdays year mon)))
+    (make-date :year year
+	       :mon mon
+	       :dom (if (> dom ult)
+			(- dom 7)
+		      dom))))
 
 
 ;; sessions and timezones and other auxiliary stuff
@@ -179,6 +227,10 @@
     :initarg :state-end
     :reader get-end-state
     :type state)
+   (in-lieu
+    :initform nil
+    :reader in-lieu-of
+    :initarg :in-lieu)
    (name
     :initarg :name
     :reader get-name)))
@@ -341,6 +393,7 @@
 (defmacro defrule/monthly (name &key from till on which
 				by-year+month
 				function
+				in-lieu
 				(for 1)
 				(start-state '+market-last+)
 				(end-state '+market-last+))
@@ -364,6 +417,7 @@
 	 :state-start ',start-state
 	 :state-end ',end-state
 	 :name ',name
+	 :in-lieu ,in-lieu
 	 :next-lambda
 	 (lambda (stamp)
 	   (do* ((ym (max-stamp ,from/stamp stamp))
@@ -377,6 +431,7 @@
 (defmacro defrule/yearly (name &key from till in on which
 			       by-year
 			       function
+			       in-lieu
 			       (for 1)
 			       (start-state '+market-last+)
 			       (end-state '+market-last+))
@@ -401,6 +456,7 @@
 	 :state-start ',start-state
 	 :state-end ',end-state
 	 :name ',name
+	 :in-lieu ,in-lieu
 	 :next-lambda
 	 (lambda (stamp)
 	   (do* ((ys (get-year stamp))
@@ -452,15 +508,8 @@
 	    ,(or doc "Aliased holiday rule."))
 	  ,(boundp in-lieu)
 	  ;; replace the next-lambda with an in-lieu lambda
-	  (with-slots (next-lambda) ,clone
-	    (setf next-lambda
-		  (lambda (stamp)
-		    (let ((s (funcall next-lambda stamp)))
-		      (with-slots (dow) s
-			(case dow
-			  (sat (make-stamp :unix (+ (get-unix s) 86400 86400)))
-			  (sat (make-stamp :unix (+ (get-unix s) 86400)))
-			  (otherwise s))))))))))))
+	  (with-slots (in-lieu) ,clone
+	    (setf in-lieu t)))))))
 
 (defholiday-fun defholiday/once defrule/once
   "For one off rules.")
@@ -528,6 +577,49 @@
 	  :metronome ,(parse-dtall (eval metronome))
 	  :rules ',(expand-rules rules))))))
 
+(defmethod move-in-lieu ((mover rule) (movee rule))
+  "Move MOVEE to the end of MOVER."
+  (with-slots ((mover-next next)) mover
+    (let ((eo-mover (midnight (get-end mover-next) 0)))
+      (with-slots ((movee-next next)) movee
+	(let ((length (get-length movee-next))
+	      (new-start (make-stamp :what (type-of (get-start movee-next))
+				     :unix eo-mover)))
+	  (setf movee-next
+		(make-interval :start new-start :length length)))))))
+
+(defun pick-next (rules)
+  (let* ((chosen (car rules))
+	 (chostart (get-start chosen))
+	 (choend (get-end chosen))
+	 (covers (remove-if #'(lambda (r)
+				(or (null (in-lieu-of r))
+				    (eql r chosen)
+				    (dt>= (get-start r) choend)))
+			    rules)))
+    ;; reschedule in-lieu holidays, british meaning, i.e. postpone them
+    (loop for r in covers
+      do (move-in-lieu chosen r))
+
+    (if chostart
+	(values chostart (get-start-state chosen) chosen)
+      (values nil '+market-last+ nil))))
+
+(defmethod metro-sort ((metronome stamp) (r1 rule) (r2 rule))
+  "Return T if R1 is sooner than R2."
+  (let ((ne1 (next-event/rule metronome r1))
+	(ne2 (next-event/rule metronome r2)))
+    (cond
+     ((dt< ne1 ne2)
+      t)
+     ((dt= ne1 ne2)
+      ;; in-lieu rules count less
+      (if (in-lieu-of r1)
+	  nil
+	(if (in-lieu-of r2)
+	    t
+	  (state> (get-start-state r1) (get-start-state r2))))))))
+
 (defmethod metro-next ((rs ruleset) (r rule))
   "Find next metronome point, given that R is the chosen rule."
   (with-slots (rules) rs
@@ -548,24 +640,12 @@
 	    (values (get-start cand) (get-start-state cand) cand)
 	  (values (get-end rnext) (get-end-state r) r))))))
 
-(defmethod metro-sort ((metronome stamp) (r1 rule) (r2 rule))
-  (let ((ne1 (next-event/rule metronome r1))
-	(ne2 (next-event/rule metronome r2)))
-    (cond
-     ((dt< ne1 ne2)
-      t)
-     ((dt= ne1 ne2)
-      (state> (get-start-state r1) (get-start-state r2))))))
-
 (defmethod metro-round ((rs ruleset))
   (with-slots (metronome state rules) rs
     ;; stable-sort needs #'setf'ing under sbcl
-    (setf rules (stable-sort rules #'(lambda (a b) (metro-sort metronome a b))))
-    (let* ((chosen (car rules))
-	   (chostart (get-start chosen)))
-      (if chostart
-	  (values chostart (get-start-state chosen) chosen)
-	(values nil '+market-last+ nil)))))
+    (setf rules (sort rules #'(lambda (a b) (metro-sort metronome a b))))
+    ;; pick a rule
+    (pick-next rules)))
 
 (defmethod next-event ((rs ruleset))
   (with-slots (metronome state rule rules) rs

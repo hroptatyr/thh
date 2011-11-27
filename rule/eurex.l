@@ -253,14 +253,15 @@
 (defholiday/yearly easter :function #'gregorian-good-friday :for 4)
 (defholiday/yearly xmas :in dec :on 25 :for 2)
 (defholiday/yearly new-year :in jan :on 1)
+(defholiday/yearly labour-day :in may :on 1)
 
 ;; deriv holidays
 (defholiday/yearly pre-xmas :in dec :on 24)
 (defholiday/yearly pre-new-year :in dec :on 31)
 
 ;; british hols plus GBP cash payments
-(defholiday/yearly labour-day :in may :on 1)
-(defholiday xmas/uk :in-lieu xmas)
+(defholiday/yearly xmas/uk :in-lieu t :in dec :on 25)
+(defholiday/yearly boxing-day/uk :in-lieu t :in dec :on 26)
 (defholiday new-year/uk :in-lieu new-year)
 (defholiday labour-day/uk :in-lieu labour-day)
 
@@ -279,7 +280,7 @@
 ;; actual rule sets
 (defruleset XEUR/hols/all
   :metronome XEUR/metronome
-  new-year easter xmas weekend)
+  new-year easter xmas weekend labour-day)
 
 (defruleset XEUR/hols/deriv
   :metronome XEUR/metronome
@@ -287,7 +288,7 @@
 
 (defruleset XEUR/hols/uk
   :metronome XEUR/metronome
-  XEUR/hols/all xmas/uk new-year/uk labour-day/uk
+  easter weekend xmas/uk boxing-day/uk new-year/uk labour-day/uk
   XLON/summer-bh XLON/spring-bh XLON/may-day-bh
   prince-william-wedding)
 
