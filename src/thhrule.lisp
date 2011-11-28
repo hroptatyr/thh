@@ -508,7 +508,7 @@
 	    ,(or doc "Aliased holiday rule."))
 	  ,(boundp in-lieu)
 	  ;; replace the next-lambda with an in-lieu lambda
-	  (with-slots (in-lieu) ,clone
+	  (with-slots (in-lieu) ,name
 	    (setf in-lieu t)))))))
 
 (defholiday-fun defholiday/once defrule/once
@@ -544,7 +544,7 @@
 (defclass ruleset ()
   ((metronome
     :initarg :metronome
-    :reader metronome-of
+    :accessor metronome-of
     :type stamp)
    (state
     :initform +market-last+
