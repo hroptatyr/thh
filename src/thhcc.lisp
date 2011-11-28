@@ -26,7 +26,8 @@
 	   (metro-sta (when year/num
 			(make-date :year year/num :mon 1 :dom 1)))
 	   (metro-end (when year/num
-			  (make-date :year year/num :mon 12 :dom 31)))
+			  (make-datetime :year year/num :mon 12 :dom 31
+					 :hour 23 :min 59 :sec 59)))
 	   ruleset/sym
 	   ruleset)
 
