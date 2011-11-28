@@ -23,6 +23,7 @@
    #:make-date
    #:make-time
    #:make-datetime
+   #:make-stamp
 
    #:defrule
    #:defrule/once
