@@ -629,12 +629,14 @@
 	     (find-if #'(lambda (a)
 			  (with-slots ((anext next) (astate state-start)) a
 			    (let ((astart (get-start anext))
+				  (aend (get-end anext))
 				  (rstart (get-start rnext))
 				  (rend (get-end rnext)))
 			      (and astart
 				   (dt> astart rstart)
 				   (dt<= astart rend)
-				   (state>= astate rstate)))))
+				   (or (state> astate rstate)
+				       (dt> aend rend))))))
 		      rules)))
 	(if cand
 	    (values (get-start cand) (get-start-state cand) cand)
