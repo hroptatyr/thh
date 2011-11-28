@@ -26,7 +26,8 @@
 	   (metro-sta (when year/num
 			(make-date :year year/num :mon 1 :dom 1)))
 	   (metro-end (when year/num
-			  (make-date :year year/num :mon 12 :dom 31)))
+			  (make-datetime :year year/num :mon 12 :dom 31
+					 :hour 23 :min 59 :sec 59)))
 	   ruleset/sym
 	   ruleset)
 
@@ -54,10 +55,10 @@
       (loop
 	with rs = ruleset
 	and cutoff = (or metro-end (make-stamp :unix 4294967295))
-	and d and s and r
-	while (and (multiple-value-setq (d s r) (next-event rs))
+	and d and s and r and e
+	while (and (multiple-value-setq (d s r e) (next-event rs))
 		   (thhrule::dt< (metronome-of rs) cutoff))
-	do (format t "~a	~a	~a~%" d s r))))
+	do (format t "~a	~a	~a	~a~%" d s r e))))
   (quit))
 
 #+sbcl
