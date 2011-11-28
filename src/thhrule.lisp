@@ -634,7 +634,7 @@
 			      (and astart
 				   (dt> astart rstart)
 				   (dt<= astart rend)
-				   (state> astate rstate)))))
+				   (state>= astate rstate)))))
 		      rules)))
 	(if cand
 	    (values (get-start cand) (get-start-state cand) cand)
