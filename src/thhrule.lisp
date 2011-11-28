@@ -665,7 +665,8 @@
 		  (t
 		   (error "state inconsistent"))))
 	unless (eql state '+market-last+)
-	return (values metronome state rule)))))
+	return (values metronome state rule
+		       (get-end (slot-value rule 'next)))))))
 
 (provide :thhrule)
 (provide "thhrule")
