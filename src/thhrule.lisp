@@ -544,7 +544,7 @@
 (defclass ruleset ()
   ((metronome
     :initarg :metronome
-    :reader metronome-of
+    :accessor metronome-of
     :type stamp)
    (state
     :initform +market-last+
