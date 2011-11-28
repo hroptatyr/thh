@@ -51,6 +51,8 @@
    #:gregorian-good-friday
    #:gregorian-easter
    #:gregorian-easter/mon
+   #:gregorian-whit-sunday
+   #:gregorian-whit-monday
    #:julian-good-friday
    #:julian-easter
    #:julian-easter/mon))
