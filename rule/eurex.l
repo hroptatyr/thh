@@ -51,7 +51,7 @@
   :session full)
 
 (deftrading-hours XEUR/Euro/reg
-  "Bobl, Bund, Buxl, Schatz Futures, regular trading"
+  "Bobl, Bund, Schatz Futures, regular trading"
   :from "2005-01-01"
   :open "08:00:00"
   :close "22:00:00"
@@ -108,7 +108,20 @@
   :timezone XEUR/timezone
   :session notify)
 
-
+(deftrading-hours XEUR/FGBX/reg
+  :from "2005-09-09"
+  :open "08:00:00"
+  :close "22:00:00"
+  :timezone XEUR/timezone
+  :session full)
+
+(deftrading-hours XEUR/FGBX/pre
+  :from "2005-09-09"
+  :open "07:30:00"
+  :close "08:00:00"
+  :timezone XEUR/timezone
+  :session pre)
+
 ;; 1m EONIA futures
 (deftrading-hours XEUR/FEO1/reg
   "FEO1 regular trading"
@@ -299,6 +312,8 @@
 ;; deriv holidays
 (defholiday/yearly pre-xmas :in dec :on 24)
 (defholiday/yearly pre-new-year :in dec :on 31)
+;; no trading on this particular day but settlements
+(defholiday/once whit-monday :in-year 2007 :function #'gregorian-whit-monday)
 
 ;; british hols plus GBP cash payments
 (defholiday/yearly xmas/uk :in-lieu t :in dec :on 25)
@@ -325,7 +340,7 @@
 
 (defruleset XEUR/hols/deriv
   :metronome XEUR/metronome
-  XEUR/hols/all pre-xmas pre-new-year)
+  XEUR/hols/all pre-xmas pre-new-year whit-monday)
 
 (defruleset XEUR/hols/uk
   :metronome XEUR/metronome
@@ -338,3 +353,20 @@
   :metronome XEUR/metronome
   XEUR/hols/deriv
   XEUR/Euro/old/reg XEUR/Euro/reg XEUR/Euro/pre XEUR/Euro/late)
+
+(defruleset XEUR/FGBS
+  :metronome XEUR/metronome
+  XEUR/FGB?)
+
+(defruleset XEUR/FGBM
+  :metronome XEUR/metronome
+  XEUR/FGB?)
+
+(defruleset XEUR/FGBL
+  :metronome XEUR/metronome
+  XEUR/FGB?)
+
+(defruleset XEUR/FGBX
+  :metronome XEUR/metronome
+  XEUR/hols/deriv
+  XEUR/FGBX/reg XEUR/FGBX/pre XEUR/Euro/late)
