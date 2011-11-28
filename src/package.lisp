@@ -10,7 +10,8 @@
   (:documentation "Michael Weber's copy-instance goodness")
   (:use
    #:cl
-   #:clos)
+   #+sbcl #:sb-mop
+   #+clisp #:clos)
   (:export
    #:copy-instance))
 
@@ -23,6 +24,7 @@
    #:make-date
    #:make-time
    #:make-datetime
+   #:make-stamp
 
    #:defrule
    #:defrule/once
@@ -49,6 +51,8 @@
    #:gregorian-good-friday
    #:gregorian-easter
    #:gregorian-easter/mon
+   #:gregorian-whit-sunday
+   #:gregorian-whit-monday
    #:julian-good-friday
    #:julian-easter
    #:julian-easter/mon))

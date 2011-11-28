@@ -1,12 +1,12 @@
 LISPFLAV = clisp
 
-noinst_PROGRAMS =
+bin_PROGRAMS =
 AM_DEFAULT_SOURCE_EXT = .lisp
 OBJEXT = fas
 CL_COMPILE = $(top_srcdir)/cl_compile.sh $(LISPFLAV)
 CL_LINK = $(top_srcdir)/cl_link.sh $(LISPFLAV)
 
-noinst_PROGRAMS += thhcc
+bin_PROGRAMS += thhcc
 
 thhcc_SOURCES =
 thhcc_SOURCES += package.lisp

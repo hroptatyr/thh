@@ -324,12 +324,19 @@
   `(defvar ,name (make-rule ,@rest)))
 
 (defmacro defrule/once (name &key from till on for
+			     in-year function
 			     (start-state '+market-last+)
 			     (end-state '+market-last+))
   "Define a one-off event."
-  (let ((on/stamp (parse-date on))
-	(from/stamp (or (parse-dtall from) +dawn-of-time+))
-	(till/stamp (or (parse-dtall till) +dusk-of-time+)))
+  (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
+	(till/stamp (or (parse-dtall till) +dusk-of-time+))
+	(on/stamp
+	 (cond
+	  ((and (eql (car function) 'function)
+		(numberp (eval in-year)))
+	   (funcall (eval function) (eval in-year)))
+	  (t
+	   (parse-date on)))))
     `(defrule ,name
        :from ,from/stamp
        :till ,till/stamp
@@ -508,7 +515,7 @@
 	    ,(or doc "Aliased holiday rule."))
 	  ,(boundp in-lieu)
 	  ;; replace the next-lambda with an in-lieu lambda
-	  (with-slots (in-lieu) ,clone
+	  (with-slots (in-lieu) ,name
 	    (setf in-lieu t)))))))
 
 (defholiday-fun defholiday/once defrule/once
@@ -544,7 +551,7 @@
 (defclass ruleset ()
   ((metronome
     :initarg :metronome
-    :reader metronome-of
+    :accessor metronome-of
     :type stamp)
    (state
     :initform +market-last+
@@ -629,12 +636,14 @@
 	     (find-if #'(lambda (a)
 			  (with-slots ((anext next) (astate state-start)) a
 			    (let ((astart (get-start anext))
+				  (aend (get-end anext))
 				  (rstart (get-start rnext))
 				  (rend (get-end rnext)))
 			      (and astart
 				   (dt> astart rstart)
 				   (dt<= astart rend)
-				   (state> astate rstate)))))
+				   (or (state> astate rstate)
+				       (dt> aend rend))))))
 		      rules)))
 	(if cand
 	    (values (get-start cand) (get-start-state cand) cand)
@@ -663,7 +672,8 @@
 		  (t
 		   (error "state inconsistent"))))
 	unless (eql state '+market-last+)
-	return (values metronome state rule)))))
+	return (values metronome state rule
+		       (get-end (slot-value rule 'next)))))))
 
 (provide :thhrule)
 (provide "thhrule")

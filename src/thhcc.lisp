@@ -21,7 +21,15 @@
     (let* ((rule-file (car cmd-line))
 	   (rule-file/real (probe-file rule-file))
 	   (ruleset/str (cadr cmd-line))
-	   ruleset/sym)
+	   (year/str (caddr cmd-line))
+	   (year/num (and year/str (parse-integer year/str)))
+	   (metro-sta (when year/num
+			(make-date :year year/num :mon 1 :dom 1)))
+	   (metro-end (when year/num
+			  (make-datetime :year year/num :mon 12 :dom 31
+					 :hour 23 :min 59 :sec 59)))
+	   ruleset/sym
+	   ruleset)
 
       (unless (and rule-file rule-file/real)
 	(error "cannot read file ~s" rule-file)
@@ -34,14 +42,23 @@
 	(error "ruleset ~a not defined" ruleset/str)
 	(quit))
 
+      ;; assign ruleset
+      (and (setq ruleset (symbol-value ruleset/sym))
+	   metro-sta
+	   (setf (metronome-of ruleset) metro-sta))
+
       ;; real work now
+      (unless (and ruleset (eql (type-of ruleset) 'thhrule::ruleset))
+	(error "ruleset ~a is not a ruleset instance" ruleset/str)
+	(quit))
+
       (loop
-	with rs = (symbol-value ruleset/sym)
-	and cutoff = (thhrule::make-stamp :unix 4294967295)
-	and d and s and r
-	while (and (multiple-value-setq (d s r) (thhrule::next-event rs))
-		   (thhrule::dt< (thhrule::metronome-of rs) cutoff))
-	do (format t "~a	~a	~a~%" d s r))))
+	with rs = ruleset
+	and cutoff = (or metro-end (make-stamp :unix 4294967295))
+	and d and s and r and e
+	while (and (multiple-value-setq (d s r e) (next-event rs))
+		   (thhrule::dt< (metronome-of rs) cutoff))
+	do (format t "~a	~a	~a	~a~%" d s r e))))
   (quit))
 
 #+sbcl
