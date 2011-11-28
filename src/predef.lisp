@@ -61,9 +61,9 @@
   (flet ((sym-conc (&rest syms)
 	   (intern (apply #'concatenate 'string (mapcar #'symbol-name syms)))))
     `(defun ,as (year)
-       (let* ((e (+ (,(sym-conc 'calc- what '-easter) year) ,add))
+       (let* ((e (,(sym-conc 'calc- what '-easter) year))
 	      (d (if (< e 32) 3 4)))
-	 (make-date :year year :mon d :dom (if (= d 3) e (- e 31)))))))
+	 (d+ (make-date :year year :mon d :dom (if (= d 3) e (- e 31))) ,add)))))
 
 ;; convenience funs
 (datify-easter gregorian :as gregorian-easter)
@@ -72,6 +72,9 @@
 (datify-easter julian :as julian-easter)
 (datify-easter julian :add -2 :as julian-good-friday)
 (datify-easter julian :add 1 :as julian-easter/mon)
+
+(datify-easter gregorian :add 50 :as gregorian-whit-monday)
+(datify-easter gregorian :add 49 :as gregorian-whit-sunday)
 
 (provide :thhrule.predef)
 (provide "predef")
