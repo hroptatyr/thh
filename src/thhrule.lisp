@@ -324,12 +324,19 @@
   `(defvar ,name (make-rule ,@rest)))
 
 (defmacro defrule/once (name &key from till on for
+			     in-year function
 			     (start-state '+market-last+)
 			     (end-state '+market-last+))
   "Define a one-off event."
-  (let ((on/stamp (parse-date on))
-	(from/stamp (or (parse-dtall from) +dawn-of-time+))
-	(till/stamp (or (parse-dtall till) +dusk-of-time+)))
+  (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
+	(till/stamp (or (parse-dtall till) +dusk-of-time+))
+	(on/stamp
+	 (cond
+	  ((and (eql (car function) 'function)
+		(numberp (eval in-year)))
+	   (funcall (eval function) (eval in-year)))
+	  (t
+	   (parse-date on)))))
     `(defrule ,name
        :from ,from/stamp
        :till ,till/stamp
