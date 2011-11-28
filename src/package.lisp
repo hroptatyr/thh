@@ -10,7 +10,8 @@
   (:documentation "Michael Weber's copy-instance goodness")
   (:use
    #:cl
-   #:clos)
+   #+sbcl #:sb-mop
+   #+clisp #:clos)
   (:export
    #:copy-instance))
 
