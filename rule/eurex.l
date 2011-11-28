@@ -1,11 +1,13 @@
 (deftimezone XEUR/timezone "Europe/Berlin")
-(defvar XEUR/metronome "1999-01-01")
+(defvar XEUR/metronome "2000-01-01")
 
+(defsession pre)
 (defsession full)
 (defsession late1)
 (defsession late2)
 (defsession post)
 (defsession exer)
+(defsession notify)
 
 
 ;; CONF futures
@@ -39,15 +41,34 @@
 
 
 ;; Bobl, Bund, Buxl, Schatz futures (FGBS, FGBM, FGBL, FGBX)
+(deftrading-hours XEUR/Euro/old/reg
+  "Bobl, Bund, Buxl, Schatz Futures, regular trading"
+  :from "2000-01-01"
+  :till "2004-12-31"
+  :open "08:00:00"
+  :close "19:00:00"
+  :timezone XEUR/timezone
+  :session full)
+
 (deftrading-hours XEUR/Euro/reg
   "Bobl, Bund, Buxl, Schatz Futures, regular trading"
+  :from "2005-01-01"
   :open "08:00:00"
   :close "22:00:00"
   :timezone XEUR/timezone
   :session full)
 
+(deftrading-hours XEUR/Euro/pre
+  "Bobl, Bund, Buxl, Schatz Futures, pre trading"
+  :from "2000-01-01"
+  :open "07:30:00"
+  :close "08:00:00"
+  :timezone XEUR/timezone
+  :session pre)
+
 (deftrading-hours XEUR/Euro/late
   "Bobl, Bund, Buxl, Schatz Futures, late trading"
+  :from "2011-01-01"
   :open "22:00:00"
   :close "22:30:00"
   :timezone XEUR/timezone
@@ -55,17 +76,37 @@
 
 (deftrading-hours XEUR/Euro/last
   "Bobl, Bund, Buxl, Schatz Futures, last trading day, trading session"
+  :from "2000-01-01"
   :open "08:00:00"
   :close "12:30:00"
   :timezone XEUR/timezone
   :session full)
 
-(deftrading-hours XEUR/Euro/last/exer
+(deftrading-hours XEUR/Euro/old2/last/notify
+  "Bobl, Bund, Buxl, Schatz futures on the last trading day, notify session"
+  :from "2005-01-01"
+  :till "2005-12-31"
+  :open "12:30:00"
+  :close "22:30:00"
+  :timezone XEUR/timezone
+  :session notify)
+
+(deftrading-hours XEUR/Euro/old1/last/notify
+  "Bobl, Bund, Buxl, Schatz Futures, last trading day, notify session"
+  :from "2000-01-01"
+  :till "2004-12-31"
+  :open "12:30:00"
+  :close "19:30:00"
+  :timezone XEUR/timezone
+  :session notify)
+
+(deftrading-hours XEUR/Euro/last/notify
   "Bobl, Bund, Buxl, Schatz Futures, last trading day, exercise session"
+  :from "2006-01-01"
   :open "12:30:00"
   :close "20:00:00"
   :timezone XEUR/timezone
-  :session exer)
+  :session notify)
 
 
 ;; 1m EONIA futures
@@ -292,3 +333,8 @@
   XLON/summer-bh XLON/spring-bh XLON/may-day-bh
   prince-william-wedding)
 
+;; rules for specific contracts
+(defruleset XEUR/FGB?
+  :metronome XEUR/metronome
+  XEUR/hols/deriv
+  XEUR/Euro/old/reg XEUR/Euro/reg XEUR/Euro/pre XEUR/Euro/late)
