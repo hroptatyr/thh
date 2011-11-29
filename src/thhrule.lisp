@@ -565,7 +565,8 @@
 		 collect
 		 (multiple-value-bind (vals keys) (split-vals+keys r)
 		   (declare (ignore vals))
-		   (destructuring-bind (&key open close from till) keys
+		   (destructuring-bind
+		       (&key open close from till &allow-other-keys) keys
 		     (declare (ignore till))
 		     (let ((name (gensym (symbol-name name)))
 			   rule)

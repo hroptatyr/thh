@@ -41,22 +41,19 @@
 
 
 ;; Bobl, Bund, Buxl, Schatz futures (FGBS, FGBM, FGBL, FGBX)
-(deftrading-hours XEUR/Euro/old/reg
-  "Bobl, Bund, Buxl, Schatz Futures, regular trading"
-  :from "2000-01-01"
-  :till "2005-11-20"
-  :open "08:00:00"
-  :close "19:00:00"
-  :timezone XEUR/timezone
-  :session full)
-
 (deftrading-hours XEUR/Euro/reg
-  "Bobl, Bund, Schatz Futures, regular trading"
-  :from "2005-11-21"
-  :open "08:00:00"
-  :close "22:00:00"
-  :timezone XEUR/timezone
-  :session full)
+  "Bobl, Bund, Buxl, Schatz Futures, regular trading"
+  (:from "2000-01-01"
+	 :till "2005-11-20"
+	 :open "08:00:00"
+	 :close "19:00:00"
+	 :timezone XEUR/timezone
+	 :session full)
+  (:from "2005-11-21"
+	 :open "08:00:00"
+	 :close "22:00:00"
+	 :timezone XEUR/timezone
+	 :session full))
 
 (deftrading-hours XEUR/Euro/pre
   "Bobl, Bund, Buxl, Schatz Futures, pre trading"
@@ -82,46 +79,35 @@
   :timezone XEUR/timezone
   :session full)
 
-(deftrading-hours XEUR/Euro/old2/last/notify
-  "Bobl, Bund, Buxl, Schatz futures on the last trading day, notify session"
-  :from "2005-01-01"
-  :till "2005-12-31"
-  :open "12:30:00"
-  :close "22:30:00"
-  :timezone XEUR/timezone
-  :session notify)
-
-(deftrading-hours XEUR/Euro/old1/last/notify
-  "Bobl, Bund, Buxl, Schatz Futures, last trading day, notify session"
-  :from "2000-01-01"
-  :till "2004-12-31"
-  :open "12:30:00"
-  :close "19:30:00"
-  :timezone XEUR/timezone
-  :session notify)
-
 (deftrading-hours XEUR/Euro/last/notify
-  "Bobl, Bund, Buxl, Schatz Futures, last trading day, exercise session"
-  :from "2006-01-01"
-  :open "12:30:00"
-  :close "20:00:00"
-  :timezone XEUR/timezone
-  :session notify)
-
-(deftrading-hours XEUR/FGBX/old/reg
-  :from "2005-09-09"
-  :till "2005-11-20"
-  :open "08:00:00"
-  :close "19:00:00"
-  :timezone XEUR/timezone
-  :session full)
+  "Bobl, Bund, Buxl, Schatz futures on the last trading day, notify session"
+  (:from "2000-01-01"
+	 :open "12:30:00"
+	 :close "19:30:00"
+	 :timezone XEUR/timezone
+	 :session notify)
+  (:from "2005-01-01"
+	 :open "12:30:00"
+	 :close "22:30:00"
+	 :timezone XEUR/timezone
+	 :session notify)
+  (:from "2006-01-01"
+	 :open "12:30:00"
+	 :close "20:00:00"
+	 :timezone XEUR/timezone
+	 :session notify))
 
 (deftrading-hours XEUR/FGBX/reg
-  :from "2005-11-20"
-  :open "08:00:00"
-  :close "22:00:00"
-  :timezone XEUR/timezone
-  :session full)
+  (:from "2005-09-09"
+	 :open "08:00:00"
+	 :close "19:00:00"
+	 :timezone XEUR/timezone
+	 :session full)
+  (:from "2005-11-20"
+	 :open "08:00:00"
+	 :close "22:00:00"
+	 :timezone XEUR/timezone
+	 :session full))
 
 (deftrading-hours XEUR/FGBX/pre
   :from "2005-09-09"
@@ -428,7 +414,7 @@
 (defruleset XEUR/FGB?
   :metronome XEUR/metronome
   XEUR/hols/deriv
-  XEUR/Euro/old/reg XEUR/Euro/reg XEUR/Euro/pre XEUR/Euro/late)
+  XEUR/Euro/reg XEUR/Euro/pre XEUR/Euro/late)
 
 (defruleset XEUR/FGBS
   :metronome XEUR/metronome
@@ -445,4 +431,4 @@
 (defruleset XEUR/FGBX
   :metronome XEUR/metronome
   XEUR/hols/deriv
-  XEUR/FGBX/old/reg XEUR/FGBX/reg XEUR/FGBX/pre XEUR/Euro/late)
+  XEUR/FGBX/reg XEUR/FGBX/pre XEUR/Euro/late)
