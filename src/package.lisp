@@ -15,11 +15,20 @@
   (:export
    #:copy-instance))
 
+(defpackage :local-time
+  (:use #:cl)
+  (:export
+   #:timezone
+   #:timezonep
+   #:make-timezone
+   #:utc-stamp->offset))
+
 (defpackage :thhrule
   (:use
    #:cl
    #:cybertiggyr-time
-   #:copy-instance)
+   #:copy-instance
+   #:local-time)
   (:export
    #:make-date
    #:make-time
