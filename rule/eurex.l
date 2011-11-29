@@ -44,7 +44,7 @@
 (deftrading-hours XEUR/Euro/old/reg
   "Bobl, Bund, Buxl, Schatz Futures, regular trading"
   :from "2000-01-01"
-  :till "2004-12-31"
+  :till "2005-11-20"
   :open "08:00:00"
   :close "19:00:00"
   :timezone XEUR/timezone
@@ -52,7 +52,7 @@
 
 (deftrading-hours XEUR/Euro/reg
   "Bobl, Bund, Schatz Futures, regular trading"
-  :from "2005-01-01"
+  :from "2005-11-21"
   :open "08:00:00"
   :close "22:00:00"
   :timezone XEUR/timezone
@@ -108,8 +108,16 @@
   :timezone XEUR/timezone
   :session notify)
 
-(deftrading-hours XEUR/FGBX/reg
+(deftrading-hours XEUR/FGBX/old/reg
   :from "2005-09-09"
+  :till "2005-11-20"
+  :open "08:00:00"
+  :close "19:00:00"
+  :timezone XEUR/timezone
+  :session full)
+
+(deftrading-hours XEUR/FGBX/reg
+  :from "2005-11-20"
   :open "08:00:00"
   :close "22:00:00"
   :timezone XEUR/timezone
@@ -369,4 +377,4 @@
 (defruleset XEUR/FGBX
   :metronome XEUR/metronome
   XEUR/hols/deriv
-  XEUR/FGBX/reg XEUR/FGBX/pre XEUR/Euro/late)
+  XEUR/FGBX/old/reg XEUR/FGBX/reg XEUR/FGBX/pre XEUR/Euro/late)
