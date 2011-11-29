@@ -100,7 +100,7 @@
 		 list (cddr list))
 	 (setq vals (cons (car list) vals)
 	       list (cdr list)))
-    finally (return (values vals keys))))
+    finally (return (values (nreverse vals) keys))))
 
 
 ;; states
@@ -530,15 +530,33 @@
 (defmacro deftrading-hours (name &rest vals+keys)
   (multiple-value-bind (vals keys) (split-vals+keys vals+keys)
     (destructuring-bind (&key open close &allow-other-keys) keys
-      (let ((doc (if (stringp (car vals))
-		   (car vals))))
+      (let ((doc (when (stringp (car vals))
+		   (prog1
+		       (car vals)
+		     (setq vals (cdr vals))))))
 	(declare (ignore doc))
-	`(defrule/daily ,name ,@keys
-	   :start ,open
-	   :end ,close
-	   :start-state +market-open+
-	   :end-state +market-close+
-	   :allow-other-keys t)))))
+
+	(if (null vals)
+	    `(defrule/daily ,name ,@keys
+	       :start ,open
+	       :end ,close
+	       :start-state +market-open+
+	       :end-state +market-close+
+	       :allow-other-keys t)
+	  ;; otherwise assume it's a list so we deliver a ruleset
+	  `(defruleset ,name
+	     ,@(loop for r in vals
+		 collect
+		 (multiple-value-bind (vals keys) (split-vals+keys r)
+		   (destructuring-bind (&key open close from till) keys
+		     (let ((name (gensym)))
+		       (eval `(defrule/daily ,name ,@keys
+				:start ,open
+				:end ,close
+				:start-state +market-open+
+				:end-state +market-close+
+				:allow-other-keys t))
+		       name))))))))))
 
 (defmacro defholiday (name &rest vals+keys)
   (multiple-value-bind (vals keys) (split-vals+keys vals+keys)
