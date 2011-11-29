@@ -37,6 +37,7 @@
 (require "util")
 (require "time")
 (require "copy-instance")
+(require "timezone")
 (in-package :thhrule)
 
 
@@ -193,7 +194,7 @@
 
 ;; sessions and timezones and other auxiliary stuff
 (defmacro deftimezone (name value &optional doc)
-  `(defvar ,name ,value ,doc))
+  `(defparameter ,name ,(make-timezone :path value) ,doc))
 
 (defmacro defsession (name &optional doc)
   `(defvar ,name ,doc))
@@ -227,6 +228,9 @@
     :initarg :state-end
     :reader get-end-state
     :type state)
+   (timezone
+    :initarg :timezone
+    :accessor timezone-of)
    (in-lieu
     :initform nil
     :reader in-lieu-of
@@ -310,20 +314,41 @@
   nil)
 
 (defmethod dt> ((i1 (eql nil)) i2)
+  (declare (ignore i2))
   t)
 
 (defmethod dt= ((s1 interval) (s2 (eql nil)))
+  (declare (ignore s2))
   nil)
 
 (defmethod dt= ((s1 (eql nil)) s2)
+  (declare (ignore s2))
   nil)
+
+(defmethod utc-stamp->offset ((s stamp) (tz timezone))
+  (utc-stamp->offset (get-unix s) tz))
+
+(defgeneric local-stamp->utc (s tz))
+(defgeneric utc-stamp->local (s tz))
+
+(defmethod utc-stamp->local ((s stamp) (tz timezone))
+  (make-stamp :what (type-of s) :unix (utc-stamp->local (get-unix s) tz)))
+
+(defmethod local-stamp->utc ((s stamp) (tz timezone))
+  (make-stamp :what (type-of s) :unix (local-stamp->utc (get-unix s) tz)))
+
+(defmethod utc-stamp->local ((s integer) (tz timezone))
+  (+ s (utc-stamp->offset s tz)))
+
+(defmethod local-stamp->utc ((s integer) (tz timezone))
+  (- s (utc-stamp->offset s tz)))
 
 ;; some macros
 (defmacro defrule (name &rest rest)
   "Define an event."
   `(defvar ,name (make-rule ,@rest)))
 
-(defmacro defrule/once (name &key from till on for
+(defmacro defrule/once (name &key from till on (for 1)
 			     in-year function
 			     (start-state '+market-last+)
 			     (end-state '+market-last+))
@@ -345,11 +370,12 @@
        :name ',name
        :next
        ,(if (and (d>= on/stamp from/stamp) (d<= on/stamp till/stamp))
-	    (make-interval :start on/stamp :length 1)
+	    (make-interval :start on/stamp :length for)
 	  ;; otherwise the user is obviously confused
 	  nil))))
 
 (defmacro defrule/daily (name &key from till start end
+			      timezone
 			      (start-state '+market-last+)
 			      (end-state '+market-last+))
   (let* ((sta/stamp (parse-time start))
@@ -357,22 +383,35 @@
 	 (ou (mod (get-unix sta/stamp) 86400))
 	 (cu (mod (get-unix end/stamp) 86400))
 	 (from/stamp (or (parse-dtall from) +dawn-of-time+))
-	 (till/stamp (or (parse-dtall till) +dusk-of-time+)))
+	 (till/stamp (or (parse-dtall till) +dusk-of-time+))
+	 (zone (if (and (symbolp timezone)
+			(boundp timezone))
+		   (eval timezone)
+		 timezone))
+	 (zone (cond
+		((stringp zone)
+		 (make-timezone :path timezone))
+		((timezonep zone)
+		 zone))))
     `(defrule ,name
        :from ,from/stamp
        :till ,till/stamp
+       :timezone ,zone
        :state-start ',start-state
        :state-end ',end-state
        :name ',name
        :next-lambda
        (lambda (stamp)
-	 (let* ((fu ,(get-unix from/stamp))
-		(su (get-unix stamp))
-		(stamp/midnight (midnight (max su fu) ,ou))
-		(probe/from (make-datetime :unix (+ stamp/midnight ,ou)))
-		(probe/till (make-datetime :unix (+ stamp/midnight ,cu))))
-	   (if (dt<= probe/from ,till/stamp)
-	       (make-interval :start probe/from :end probe/till)))))))
+	 (flet ((probe (day timeofday)
+		  (let ((s (+ day timeofday)))
+		    (make-datetime :unix (local-stamp->utc s ,zone)))))
+	   (let* ((fu ,(get-unix from/stamp))
+		  (su (utc-stamp->local (get-unix stamp) ,zone))
+		  (stamp/midnight (midnight (max su fu) ,ou))
+		  (probe/o (probe stamp/midnight ,ou))
+		  (probe/c (probe stamp/midnight ,cu)))
+	     (when (dt<= probe/o ,till/stamp)
+	       (make-interval :start probe/o :end probe/c))))))))
 
 (defmacro defrule/weekly (name &key from till on (for 1)
 			       (start-state '+market-last+)
@@ -398,7 +437,7 @@
 		  (make-interval :start probe :length ,for))))))))
 
 (defmacro defrule/monthly (name &key from till on which
-				by-year+month
+				;; by-year+month
 				function
 				in-lieu
 				(for 1)
@@ -436,7 +475,7 @@
 		    (make-interval :start probe :length ,for)))))))))
 
 (defmacro defrule/yearly (name &key from till in on which
-			       by-year
+			       ;; by-year
 			       function
 			       in-lieu
 			       (for 1)
@@ -481,6 +520,7 @@
   ;;   (def name ,@rest
   ;;        :start-state bla
   ;;        :end-state bla))
+  (declare (ignore comment))
   `(defmacro ,name (name &rest rest)
      `(,',def ,name
 	      ,@rest
@@ -492,6 +532,7 @@
     (destructuring-bind (&key open close &allow-other-keys) keys
       (let ((doc (if (stringp (car vals))
 		   (car vals))))
+	(declare (ignore doc))
 	`(defrule/daily ,name ,@keys
 	   :start ,open
 	   :end ,close
@@ -659,6 +700,7 @@
 (defmethod next-event ((rs ruleset))
   (with-slots (metronome state rule rules) rs
     (multiple-value-bind (stamp newst newru) (metro-round rs)
+      (declare (ignore newru))
       (loop
 	when (null metronome)
 	return nil
@@ -670,7 +712,7 @@
 		  ((dt= stamp metronome)
 		   (metro-next rs rule))
 		  (t
-		   (error "state inconsistent"))))
+		   (error "state inconsistent ~a < ~a" stamp metronome))))
 	unless (eql state '+market-last+)
 	return (values metronome state rule
 		       (get-end (slot-value rule 'next)))))))
