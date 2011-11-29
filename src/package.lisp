@@ -62,6 +62,9 @@
    #:gregorian-easter/mon
    #:gregorian-whit-sunday
    #:gregorian-whit-monday
+   #:gregorian-ascension
+   #:gregorian-trinity-sunday
+   #:gregorian-corpus-christi
    #:julian-good-friday
    #:julian-easter
    #:julian-easter/mon))
