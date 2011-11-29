@@ -331,16 +331,16 @@
 (defgeneric local-stamp->utc (s tz))
 (defgeneric utc-stamp->local (s tz))
 
-(defmethod utc-stamp->local ((s stamp) (tz timezone))
+(defmethod utc-stamp->local ((s stamp) tz)
   (make-stamp :what (type-of s) :unix (utc-stamp->local (get-unix s) tz)))
 
-(defmethod local-stamp->utc ((s stamp) (tz timezone))
+(defmethod local-stamp->utc ((s stamp) tz)
   (make-stamp :what (type-of s) :unix (local-stamp->utc (get-unix s) tz)))
 
-(defmethod utc-stamp->local ((s integer) (tz timezone))
+(defmethod utc-stamp->local ((s integer) tz)
   (+ s (utc-stamp->offset s tz)))
 
-(defmethod local-stamp->utc ((s integer) (tz timezone))
+(defmethod local-stamp->utc ((s integer) tz)
   (- s (utc-stamp->offset s tz)))
 
 ;; some macros
