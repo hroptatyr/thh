@@ -646,14 +646,27 @@
 (defmacro make-ruleset (&rest stuff)
   `(make-instance 'ruleset ,@stuff))
 
+(defun var-or-sym-value (var-or-sym)
+  (if (symbolp var-or-sym)
+      (symbol-value var-or-sym)
+    var-or-sym))
+
+(defun var-or-sym-type-p (var-or-sym type)
+  (eql (type-of (var-or-sym-value var-or-sym)) type))
+
 (defun expand-rules (rules)
   "Expand every ruleset in RULES by its rules."
-  (loop for sym in rules
-    if (eql (type-of (symbol-value sym)) 'ruleset)
-    append (slot-value (symbol-value sym) 'rules)
-    else
-    collect (symbol-value sym)
-    end))
+  (flet ((rulep (var-or-sym)
+	   (var-or-sym-type-p var-or-sym 'rule))
+	 (rulesetp (var-or-sym)
+	   (var-or-sym-type-p var-or-sym 'ruleset)))
+    (declare (ignore #'rulep))
+    (loop for sym in rules
+      if (rulesetp sym)
+      append (slot-value (var-or-sym-value sym) 'rules)
+      else
+      collect (var-or-sym-value sym)
+      end)))
 
 (defmacro defruleset (name &rest vars+keys)
   "&key (metronome +dawn-of-time+)"
