@@ -75,6 +75,9 @@
 
 (datify-easter gregorian :add 50 :as gregorian-whit-monday)
 (datify-easter gregorian :add 49 :as gregorian-whit-sunday)
+(datify-easter gregorian :add 39 :as gregorian-ascension)
+(datify-easter gregorian :add 56 :as gregorian-trinity-sunday)
+(datify-easter gregorian :add 60 :as gregorian-corpus-christi)
 
 (provide :thhrule.predef)
 (provide "predef")
