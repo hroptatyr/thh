@@ -112,8 +112,9 @@
 (defmethod fixup-human ((u integer) (s stamp)))
 
 (defmethod fixup-human ((u integer) (d date))
-  (multiple-value-bind (ts tm th dd dm dy wd dst-p tz)
+  (multiple-value-bind (ts tm th dd dm dy wd)
       (decode-universal-time u)
+    (declare (ignore ts tm th))
     (with-slots (year mon dom dow) d
       (setf year dy)
       (setf mon dm)
@@ -131,7 +132,7 @@
       (setf hour h))))
 
 (defmethod fixup-human ((u integer) (dt datetime))
-  (multiple-value-bind (ts tm th dd dm dy wd dst-p tz)
+  (multiple-value-bind (ts tm th dd dm dy wd)
       (decode-universal-time u)
     (with-slots (year mon dom dow hour min sec) dt
       (setf year dy)
@@ -171,21 +172,27 @@
       (setf dow (nth dm +day-of-week+)))))
 
 (defmethod set-year :after (dummy (d date))
+  (declare (ignore dummy))
   (fixup-stamp d))
 
 (defmethod set-mon :after (dummy (d date))
+  (declare (ignore dummy))
   (fixup-stamp d))
 
 (defmethod set-dom :after (dummy (d date))
+  (declare (ignore dummy))
   (fixup-stamp d))
 
 (defmethod set-hour :after (dummy (tm tod))
+  (declare (ignore dummy))
   (fixup-stamp tm))
 
 (defmethod set-min :after (dummy (tm tod))
+  (declare (ignore dummy))
   (fixup-stamp tm))
 
 (defmethod set-sec :after (dummy (tm tod))
+  (declare (ignore dummy))
   (fixup-stamp tm))
 
 (defmethod set-unix :after (unix (s stamp))
@@ -193,20 +200,23 @@
 
 (defmethod get-year ((s stamp))
   ;; temporarily promote
-  (multiple-value-bind (ts tm th dd dm dy wd dst-p tz)
+  (multiple-value-bind (ts tm th dd dm dy wd)
       (decode-universal-time (get-unix s))
+    (declare (ignore ts tm th dd dm wd))
     dy))
 
 (defmethod get-mon ((s stamp))
   ;; temporarily promote
-  (multiple-value-bind (ts tm th dd dm dy wd dst-p tz)
+  (multiple-value-bind (ts tm th dd dm dy wd)
       (decode-universal-time (get-unix s))
+    (declare (ignore ts tm th dd dy wd))
     dm))
 
 (defmethod get-dom ((s stamp))
   ;; temporarily promote
-  (multiple-value-bind (ts tm th dd dm dy wd dst-p tz)
+  (multiple-value-bind (ts tm th dd dm dy wd)
       (decode-universal-time (get-unix s))
+    (declare (ignore ts tm th dm dy wd))
     dd))
 
 (defmethod get-hour ((s (eql 'stamp)))

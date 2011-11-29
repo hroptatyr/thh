@@ -314,12 +314,15 @@
   nil)
 
 (defmethod dt> ((i1 (eql nil)) i2)
+  (declare (ignore i2))
   t)
 
 (defmethod dt= ((s1 interval) (s2 (eql nil)))
+  (declare (ignore s2))
   nil)
 
 (defmethod dt= ((s1 (eql nil)) s2)
+  (declare (ignore s2))
   nil)
 
 (defmethod utc-stamp->offset ((s stamp) (tz timezone))
@@ -330,7 +333,7 @@
   "Define an event."
   `(defvar ,name (make-rule ,@rest)))
 
-(defmacro defrule/once (name &key from till on for
+(defmacro defrule/once (name &key from till on (for 1)
 			     in-year function
 			     (start-state '+market-last+)
 			     (end-state '+market-last+))
@@ -352,7 +355,7 @@
        :name ',name
        :next
        ,(if (and (d>= on/stamp from/stamp) (d<= on/stamp till/stamp))
-	    (make-interval :start on/stamp :length 1)
+	    (make-interval :start on/stamp :length for)
 	  ;; otherwise the user is obviously confused
 	  nil))))
 
@@ -420,7 +423,7 @@
 		  (make-interval :start probe :length ,for))))))))
 
 (defmacro defrule/monthly (name &key from till on which
-				by-year+month
+				;; by-year+month
 				function
 				in-lieu
 				(for 1)
@@ -458,7 +461,7 @@
 		    (make-interval :start probe :length ,for)))))))))
 
 (defmacro defrule/yearly (name &key from till in on which
-			       by-year
+			       ;; by-year
 			       function
 			       in-lieu
 			       (for 1)
@@ -503,6 +506,7 @@
   ;;   (def name ,@rest
   ;;        :start-state bla
   ;;        :end-state bla))
+  (declare (ignore comment))
   `(defmacro ,name (name &rest rest)
      `(,',def ,name
 	      ,@rest
@@ -514,6 +518,7 @@
     (destructuring-bind (&key open close &allow-other-keys) keys
       (let ((doc (if (stringp (car vals))
 		   (car vals))))
+	(declare (ignore doc))
 	`(defrule/daily ,name ,@keys
 	   :start ,open
 	   :end ,close
@@ -681,6 +686,7 @@
 (defmethod next-event ((rs ruleset))
   (with-slots (metronome state rule rules) rs
     (multiple-value-bind (stamp newst newru) (metro-round rs)
+      (declare (ignore newru))
       (loop
 	when (null metronome)
 	return nil
