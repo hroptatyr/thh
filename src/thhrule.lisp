@@ -37,6 +37,7 @@
 (require "util")
 (require "time")
 (require "copy-instance")
+(require "timezone")
 (in-package :thhrule)
 
 
@@ -227,6 +228,9 @@
     :initarg :state-end
     :reader get-end-state
     :type state)
+   (timezone
+    :initarg :timezone
+    :accessor timezone-of)
    (in-lieu
     :initform nil
     :reader in-lieu-of
@@ -350,6 +354,7 @@
 	  nil))))
 
 (defmacro defrule/daily (name &key from till start end
+			      timezone
 			      (start-state '+market-last+)
 			      (end-state '+market-last+))
   (let* ((sta/stamp (parse-time start))
@@ -357,22 +362,32 @@
 	 (ou (mod (get-unix sta/stamp) 86400))
 	 (cu (mod (get-unix end/stamp) 86400))
 	 (from/stamp (or (parse-dtall from) +dawn-of-time+))
-	 (till/stamp (or (parse-dtall till) +dusk-of-time+)))
+	 (till/stamp (or (parse-dtall till) +dusk-of-time+))
+	 (zone (when (stringp timezone)
+		 (let ((path (concatenate 'string
+					  "/usr/share/zoneinfo/" timezone)))
+		   (make-timezone :path path
+				  :name (intern timezone))))))
     `(defrule ,name
        :from ,from/stamp
        :till ,till/stamp
+       :timezone ,zone
        :state-start ',start-state
        :state-end ',end-state
        :name ',name
        :next-lambda
        (lambda (stamp)
-	 (let* ((fu ,(get-unix from/stamp))
-		(su (get-unix stamp))
-		(stamp/midnight (midnight (max su fu) ,ou))
-		(probe/from (make-datetime :unix (+ stamp/midnight ,ou)))
-		(probe/till (make-datetime :unix (+ stamp/midnight ,cu))))
-	   (if (dt<= probe/from ,till/stamp)
-	       (make-interval :start probe/from :end probe/till)))))))
+	 (flet ((probe (day tim)
+		  (let* ((s (+ day tim))
+			 (off (stamp-offset s ,zone)))
+		    (make-datetime :unix (- s off)))))
+	   (let* ((fu ,(get-unix from/stamp))
+		  (su (get-unix stamp))
+		  (stamp/midnight (midnight (max su fu) ,ou))
+		  (probe/o (probe stamp/midnight ,ou))
+		  (probe/c (probe stamp/midnight ,cu)))
+	     (when (dt<= probe/o ,till/stamp)
+	       (make-interval :start probe/o :end probe/c))))))))
 
 (defmacro defrule/weekly (name &key from till on (for 1)
 			       (start-state '+market-last+)
