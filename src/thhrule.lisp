@@ -102,6 +102,15 @@
 	       list (cdr list)))
     finally (return (values (nreverse vals) keys))))
 
+(defun var-or-sym-value (var-or-sym)
+  (if (and (symbolp var-or-sym)
+	   (boundp var-or-sym))
+      (symbol-value var-or-sym)
+    var-or-sym))
+
+(defun var-or-sym-type-p (var-or-sym type)
+  (eql (type-of (var-or-sym-value var-or-sym)) type))
+
 
 ;; states
 (defconstant +market-last+ t)
@@ -380,38 +389,43 @@
 			      (end-state '+market-last+))
   (let* ((sta/stamp (parse-time start))
 	 (end/stamp (parse-time end))
-	 (ou (mod (get-unix sta/stamp) 86400))
-	 (cu (mod (get-unix end/stamp) 86400))
 	 (from/stamp (or (parse-dtall from) +dawn-of-time+))
 	 (till/stamp (or (parse-dtall till) +dusk-of-time+))
-	 (zone (if (and (symbolp timezone)
-			(boundp timezone))
-		   (eval timezone)
-		 timezone))
+	 (zone (var-or-sym-value timezone))
 	 (zone (cond
 		((stringp zone)
 		 (make-timezone :path timezone))
 		((timezonep zone)
-		 zone))))
-    `(defrule ,name
-       :from ,from/stamp
-       :till ,till/stamp
-       :timezone ,zone
-       :state-start ',start-state
-       :state-end ',end-state
-       :name ',name
-       :next-lambda
-       (lambda (stamp)
-	 (flet ((probe (day timeofday)
-		  (let ((s (+ day timeofday)))
-		    (make-datetime :unix (local-stamp->utc s ,zone)))))
-	   (let* ((fu ,(get-unix from/stamp))
-		  (su (utc-stamp->local (get-unix stamp) ,zone))
-		  (stamp/midnight (midnight (max su fu) ,ou))
-		  (probe/o (probe stamp/midnight ,ou))
-		  (probe/c (probe stamp/midnight ,cu)))
-	     (when (dt<= probe/o ,till/stamp)
-	       (make-interval :start probe/o :end probe/c))))))))
+		 zone)))
+	 (next-lambda (gensym (symbol-name name))))
+
+    `(let ((rule
+	    (make-rule
+	     :from ,from/stamp
+	     :till ,till/stamp
+	     :timezone ,zone
+	     :state-start ',start-state
+	     :state-end ',end-state
+	     :name ',name))
+	   (ou (mod ,(get-unix sta/stamp) 86400))
+	   (cu (mod ,(get-unix end/stamp) 86400))
+	   (zone ,zone))
+       ;; close over the rule, and stuff like the open and close times
+       (defun ,next-lambda (stamp)
+	 (with-slots (from till timezone) rule
+	   (flet ((probe (day timeofday)
+		    (let ((s (+ day timeofday)))
+		      (make-datetime :unix (local-stamp->utc s timezone)))))
+	     (let* ((fu (get-unix from))
+		    (su (utc-stamp->local (get-unix stamp) timezone))
+		    (stamp/midnight (midnight (max su fu) ou))
+		    (probe/o (probe stamp/midnight ou))
+		    (probe/c (probe stamp/midnight cu)))
+	       (when (dt<= probe/o till)
+		 (make-interval :start probe/o :end probe/c))))))
+       ;; assign the closure as next-lambda
+       (setf (slot-value rule 'next-lambda) #',next-lambda)
+       (defvar ,name rule))))
 
 (defmacro defrule/weekly (name &key from till on (for 1)
 			       (start-state '+market-last+)
@@ -645,14 +659,6 @@
 
 (defmacro make-ruleset (&rest stuff)
   `(make-instance 'ruleset ,@stuff))
-
-(defun var-or-sym-value (var-or-sym)
-  (if (symbolp var-or-sym)
-      (symbol-value var-or-sym)
-    var-or-sym))
-
-(defun var-or-sym-type-p (var-or-sym type)
-  (eql (type-of (var-or-sym-value var-or-sym)) type))
 
 (defun expand-rules (rules)
   "Expand every ruleset in RULES by its rules."
