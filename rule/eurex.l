@@ -321,7 +321,9 @@
 (defholiday/yearly pre-xmas :in dec :on 24)
 (defholiday/yearly pre-new-year :in dec :on 31)
 ;; no trading on this particular day but settlements
-(defholiday/once whit-monday :in-year 2007 :function #'gregorian-whit-monday)
+(defholiday/once whit-monday-2007
+  :in-year 2007
+  :function #'gregorian-whit-monday)
 
 ;; british hols plus GBP cash payments
 (defholiday/yearly xmas/uk :in-lieu t :in dec :on 25)
@@ -340,6 +342,72 @@
 (defholiday/yearly all-saints :in nov :on 1)
 (defholiday/yearly immaculate-conception :in dec :on 8)
 
+;;; swiss holidays, no trading, no settlement, but clearing
+;; 2000-08-01 -> swiss-national-day
+;; 
+;; 2001-01-02 -> st. berchtold
+;; 2003-01-02 -> st. berchtold
+;; 2004-01-02 -> st. berchtold
+;; 2006-01-02 -> "
+;; 2007-01-02 -> "
+;; 
+;; 2001-05-24 -> ascension
+;; 2001-06-04 -> whit monday
+;; 2003-05-29 -> ascension
+;; 2003-06-09 -> whit monday
+;; 2004-05-20 -> ascension
+;; 2004-05-31 -> whit monday
+;; 2005-05-05 -> ascension
+;; 2005-05-16 -> whit monday
+;; 2006-05-25 -> ascension
+;; 2006-06-05 -> whit monday
+;; 2007-05-17 -> ascension
+;; 2007-05-28 -> whit-monday
+;;
+;; 2006-08-01 -> swiss-national-day
+;; 2007-08-01 -> swiss-national-day
+;;
+;; 2000-01-03
+;; 2000-06-01 -> Corpus Christi
+;; 2000-06-12
+
+;;; trading ceases early
+;; 2001-04-12
+;; 2001-05-23
+;; 2001-12-24
+
+;;; no settlement, but trading
+;; 2002-05-09 -> ascension
+;; 2002-05-20 -> whit monday
+;; 
+;; 2002-01-02 -> st. berchtold
+;;
+;; 2001-08-01 -> swiss-national-day
+;; 2002-08-01 -> swiss-national-day
+;; 2003-08-01 -> swiss-national-day
+;; 2005-08-01 -> swiss-national-day
+
+;;; no trading, no clearing (exer & stl) in swiss eqty and eqty index derivs
+;; 2008-01-02 -> st. berchtold
+;; 2008-05-12 -> whit monday
+;; 2008-08-01 -> swiss-national-day
+
+;;; no trading, no clearing in swiss eqty/eqty index and fixed income derivs
+;;; also no CHF cash
+;; 2009-01-02 -> st. berchtold
+;; 2009-05-21 -> whit monday
+;; 2009-06-01 -> ascension
+;; 2010-05-13 -> whit monday
+;; 2010-05-24 -> ascension
+
+(defholiday/yearly st-berchtold :in jan :on 2)
+(defholiday/yearly ascension :function #'gregorian-ascension)
+(defholiday/yearly whit-monday :function #'gregorian-whit-monday)
+(defholiday/yearly swiss-national-day
+  :from "1994-01-01" ;; official
+  :in aug :on 1)
+(defholiday/yearly corpus-christi :function #'gregorian-corpus-christi)
+
 
 ;; actual rule sets
 (defruleset XEUR/hols/all
@@ -348,7 +416,7 @@
 
 (defruleset XEUR/hols/deriv
   :metronome XEUR/metronome
-  XEUR/hols/all pre-xmas pre-new-year whit-monday)
+  XEUR/hols/all pre-xmas pre-new-year whit-monday-2007)
 
 (defruleset XEUR/hols/uk
   :metronome XEUR/metronome

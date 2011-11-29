@@ -100,7 +100,16 @@
 		 list (cddr list))
 	 (setq vals (cons (car list) vals)
 	       list (cdr list)))
-    finally (return (values vals keys))))
+    finally (return (values (nreverse vals) keys))))
+
+(defun var-or-sym-value (var-or-sym)
+  (if (and (symbolp var-or-sym)
+	   (boundp var-or-sym))
+      (symbol-value var-or-sym)
+    var-or-sym))
+
+(defun var-or-sym-type-p (var-or-sym type)
+  (eql (type-of (var-or-sym-value var-or-sym)) type))
 
 
 ;; states
@@ -331,16 +340,16 @@
 (defgeneric local-stamp->utc (s tz))
 (defgeneric utc-stamp->local (s tz))
 
-(defmethod utc-stamp->local ((s stamp) (tz timezone))
+(defmethod utc-stamp->local ((s stamp) tz)
   (make-stamp :what (type-of s) :unix (utc-stamp->local (get-unix s) tz)))
 
-(defmethod local-stamp->utc ((s stamp) (tz timezone))
+(defmethod local-stamp->utc ((s stamp) tz)
   (make-stamp :what (type-of s) :unix (local-stamp->utc (get-unix s) tz)))
 
-(defmethod utc-stamp->local ((s integer) (tz timezone))
+(defmethod utc-stamp->local ((s integer) tz)
   (+ s (utc-stamp->offset s tz)))
 
-(defmethod local-stamp->utc ((s integer) (tz timezone))
+(defmethod local-stamp->utc ((s integer) tz)
   (- s (utc-stamp->offset s tz)))
 
 ;; some macros
@@ -380,38 +389,43 @@
 			      (end-state '+market-last+))
   (let* ((sta/stamp (parse-time start))
 	 (end/stamp (parse-time end))
-	 (ou (mod (get-unix sta/stamp) 86400))
-	 (cu (mod (get-unix end/stamp) 86400))
 	 (from/stamp (or (parse-dtall from) +dawn-of-time+))
 	 (till/stamp (or (parse-dtall till) +dusk-of-time+))
-	 (zone (if (and (symbolp timezone)
-			(boundp timezone))
-		   (eval timezone)
-		 timezone))
+	 (zone (var-or-sym-value timezone))
 	 (zone (cond
 		((stringp zone)
 		 (make-timezone :path timezone))
 		((timezonep zone)
-		 zone))))
-    `(defrule ,name
-       :from ,from/stamp
-       :till ,till/stamp
-       :timezone ,zone
-       :state-start ',start-state
-       :state-end ',end-state
-       :name ',name
-       :next-lambda
-       (lambda (stamp)
-	 (flet ((probe (day timeofday)
-		  (let ((s (+ day timeofday)))
-		    (make-datetime :unix (local-stamp->utc s ,zone)))))
-	   (let* ((fu ,(get-unix from/stamp))
-		  (su (utc-stamp->local (get-unix stamp) ,zone))
-		  (stamp/midnight (midnight (max su fu) ,ou))
-		  (probe/o (probe stamp/midnight ,ou))
-		  (probe/c (probe stamp/midnight ,cu)))
-	     (when (dt<= probe/o ,till/stamp)
-	       (make-interval :start probe/o :end probe/c))))))))
+		 zone)))
+	 (next-lambda (gensym (symbol-name name))))
+
+    `(let ((rule
+	    (make-rule
+	     :from ,from/stamp
+	     :till ,till/stamp
+	     :timezone ,zone
+	     :state-start ',start-state
+	     :state-end ',end-state
+	     :name ',name))
+	   (ou (mod ,(get-unix sta/stamp) 86400))
+	   (cu (mod ,(get-unix end/stamp) 86400))
+	   (zone ,zone))
+       ;; close over the rule, and stuff like the open and close times
+       (defun ,next-lambda (stamp)
+	 (with-slots (from till timezone) rule
+	   (flet ((probe (day timeofday)
+		    (let ((s (+ day timeofday)))
+		      (make-datetime :unix (local-stamp->utc s timezone)))))
+	     (let* ((fu (get-unix from))
+		    (su (utc-stamp->local (get-unix stamp) timezone))
+		    (stamp/midnight (midnight (max su fu) ou))
+		    (probe/o (probe stamp/midnight ou))
+		    (probe/c (probe stamp/midnight cu)))
+	       (when (dt<= probe/o till)
+		 (make-interval :start probe/o :end probe/c))))))
+       ;; assign the closure as next-lambda
+       (setf (slot-value rule 'next-lambda) #',next-lambda)
+       (defvar ,name rule))))
 
 (defmacro defrule/weekly (name &key from till on (for 1)
 			       (start-state '+market-last+)
@@ -530,15 +544,54 @@
 (defmacro deftrading-hours (name &rest vals+keys)
   (multiple-value-bind (vals keys) (split-vals+keys vals+keys)
     (destructuring-bind (&key open close &allow-other-keys) keys
-      (let ((doc (if (stringp (car vals))
-		   (car vals))))
+      (let ((doc (when (stringp (car vals))
+		   (prog1
+		       (car vals)
+		     (setq vals (cdr vals))))))
 	(declare (ignore doc))
-	`(defrule/daily ,name ,@keys
-	   :start ,open
-	   :end ,close
-	   :start-state +market-open+
-	   :end-state +market-close+
-	   :allow-other-keys t)))))
+
+	(if (null vals)
+	    `(defrule/daily ,name ,@keys
+	       :start ,open
+	       :end ,close
+	       :start-state +market-open+
+	       :end-state +market-close+
+	       :allow-other-keys t)
+	  ;; otherwise assume it's a list so we deliver a ruleset
+	  `(defruleset ,name
+	     ,@(loop
+		 with prev-r = nil
+		 for r in vals
+		 collect
+		 (multiple-value-bind (vals keys) (split-vals+keys r)
+		   (declare (ignore vals))
+		   (destructuring-bind (&key open close from till) keys
+		     (declare (ignore till))
+		     (let ((name (gensym (symbol-name name)))
+			   rule)
+		       (eval `(defrule/daily ,name ,@keys
+				:start ,open
+				:end ,close
+				:start-state +market-open+
+				:end-state +market-close+
+				:allow-other-keys t))
+		       ;; chain from/till slots
+		       (setf rule (symbol-value name))
+		       (when (and prev-r
+				  from
+				  (eql (slot-value prev-r 'till)
+				       +dusk-of-time+))
+			 (setf (slot-value prev-r 'till)
+			       (slot-value rule 'from)))
+		       (when (and prev-r
+				  (null from)
+				  (not (eql (slot-value prev-r 'till)
+					    +dusk-of-time+)))
+			 (setf (slot-value rule 'from)
+			       (slot-value prev-r 'till)))
+		       (setf prev-r rule)
+		       ;; return the symbol so the ruleset makes sense
+		       name))))))))))
 
 (defmacro defholiday (name &rest vals+keys)
   (multiple-value-bind (vals keys) (split-vals+keys vals+keys)
@@ -609,12 +662,17 @@
 
 (defun expand-rules (rules)
   "Expand every ruleset in RULES by its rules."
-  (loop for sym in rules
-    if (eql (type-of (symbol-value sym)) 'ruleset)
-    append (slot-value (symbol-value sym) 'rules)
-    else
-    collect (symbol-value sym)
-    end))
+  (flet ((rulep (var-or-sym)
+	   (var-or-sym-type-p var-or-sym 'rule))
+	 (rulesetp (var-or-sym)
+	   (var-or-sym-type-p var-or-sym 'ruleset)))
+    (declare (ignore #'rulep))
+    (loop for sym in rules
+      if (rulesetp sym)
+      append (slot-value (var-or-sym-value sym) 'rules)
+      else
+      collect (var-or-sym-value sym)
+      end)))
 
 (defmacro defruleset (name &rest vars+keys)
   "&key (metronome +dawn-of-time+)"
