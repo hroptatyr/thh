@@ -322,11 +322,8 @@
 (defmethod dt= ((s1 (eql nil)) s2)
   nil)
 
-(defmethod local-stamp->utc ((s stamp) (tz timezone))
-  (local-stamp->utc (get-unix s) tz))
-
-(defmethod utc-stamp->local ((s stamp) (tz timezone))
-  (utc-stamp->local (get-unix s) tz))
+(defmethod utc-stamp->offset ((s stamp) (tz timezone))
+  (utc-stamp->offset (get-unix s) tz))
 
 ;; some macros
 (defmacro defrule (name &rest rest)
@@ -369,11 +366,15 @@
 	 (cu (mod (get-unix end/stamp) 86400))
 	 (from/stamp (or (parse-dtall from) +dawn-of-time+))
 	 (till/stamp (or (parse-dtall till) +dusk-of-time+))
+	 (zone (if (and (symbolp timezone)
+			(boundp timezone))
+		   (eval timezone)
+		 timezone))
 	 (zone (cond
-		((stringp timezone)
-		 (make-timezone :path path))
-		((timezonep timezone)
-		 timezone))))
+		((stringp zone)
+		 (make-timezone :path timezone))
+		((timezonep zone)
+		 zone))))
     `(defrule ,name
        :from ,from/stamp
        :till ,till/stamp
@@ -384,8 +385,9 @@
        :next-lambda
        (lambda (stamp)
 	 (flet ((probe (day tim)
-		  (let ((s (+ day tim)))
-		    (make-datetime :unix (local-stamp->utc s ,zone)))))
+		  (let* ((s (+ day tim))
+			 (off (utc-stamp->offset s ,zone)))
+		    (make-datetime :unix (- s off)))))
 	   (let* ((fu ,(get-unix from/stamp))
 		  (su (get-unix stamp))
 		  (stamp/midnight (midnight (max su fu) ,ou))

@@ -21,8 +21,7 @@
    #:timezone
    #:timezonep
    #:make-timezone
-   #:local-stamp->utc
-   #:utc-stamp->local))
+   #:utc-stamp->offset))
 
 (defpackage :thhrule
   (:use

@@ -78,13 +78,9 @@
 (defun timezonep (object)
   (eql (type-of object) 'timezone))
 
-(defgeneric local-stamp->utc (stamp zone)
+(defgeneric utc-stamp->offset (stamp zone)
   (:documentation
-   "Convert a unix time stamp, considered as local, to a utc stamp."))
-
-(defgeneric utc-stamp->local (stamp zone)
-  (:documentation
-   "Convert a unix time stamp, considered as utc, to a local stamp."))
+   "Calculate offset of unix time STAMP, considered as utc, to ZONE."))
 
 
 ;;; Variables
@@ -97,7 +93,10 @@
 
 ;; low level reader
 (defun %read-binary-integer (stream byte-count &optional (signed nil))
-  "Read BYTE-COUNT bytes from the binary stream STREAM, and return an integer which is its representation in network byte order (MSB).  If SIGNED is true, interprets the most significant bit as a sign indicator."
+  "Read BYTE-COUNT bytes from the binary stream STREAM, and return an
+integer which is its representation in network byte order (MSB).  If
+SIGNED is true, interprets the most significant bit as a sign
+indicator."
   (loop
     :with result = 0
     :for offset :from (* (1- byte-count) 8) :downto 0 :by 8
@@ -110,13 +109,15 @@
                  (return result))))
 
 (defun %string-from-unsigned-byte-vector (vector offset)
-  "Returns a string created from the vector of unsigned bytes VECTOR starting at OFFSET which is terminated by a 0."
+  "Returns a string created from the vector of unsigned bytes VECTOR
+starting at OFFSET which is terminated by a 0."
   (declare (type (vector (unsigned-byte 8)) vector))
   (let* ((null-pos (or (position 0 vector :start offset) (length vector)))
          (result (make-string (- null-pos offset) :element-type 'base-char)))
     (loop for input-index :from offset :upto (1- null-pos)
           for output-index :upfrom 0
-          do (setf (aref result output-index) (code-char (aref vector input-index))))
+          do (setf (aref result output-index)
+		   (code-char (aref vector input-index))))
     result))
 
 (defun %find-first-std-offset (timezone-indexes timestamp-info)
@@ -192,42 +193,53 @@
                    (make-subzone
                     :offset (first info)
                     :daylight-p (/= (second info) 0)
-                    :abbrev (%string-from-unsigned-byte-vector abbrevs (third info))))))
+                    :abbrev (%string-from-unsigned-byte-vector
+			     abbrevs (third info))))))
 
 (defun %realize-timezone (zone &optional reload)
-  "If timezone has not already been loaded or RELOAD is non-NIL, loads the timezone information from its associated unix file.  If the file is not a valid timezone file, the condition INVALID-TIMEZONE-FILE will be signaled."
+  "If timezone has not already been loaded or RELOAD is non-NIL, loads
+the timezone information from its associated unix file.  If the file
+is not a valid timezone file, the condition INVALID-TIMEZONE-FILE will
+be signaled."
   (when (or reload (not (timezone-loaded-p zone)))
     (let ((realpath
 	   (or (probe-file (timezone-path zone))
-	       (probe-file (concatenate 'string
-					*default-timezone-repository-path*
-					(timezone-path zone))))))
-      (unless (setf (timezone-path zone) realpath)
-	(error "fjjffj")))
-    (with-open-file (inf (timezone-path zone)
-                         :direction :input
-                         :element-type 'unsigned-byte)
-      (%tz-verify-magic-number inf zone)
+	       (probe-file (merge-pathnames
+			    (timezone-path zone)
+			    *default-timezone-repository-path*)))))
+      (when realpath
+	(with-open-file (inf realpath
+			     :direction :input
+			     :element-type 'unsigned-byte)
+	  (%tz-verify-magic-number inf zone)
 
-      ;; read header values
-      (let* ((header (%tz-read-header inf))
-             (timezone-transitions (%tz-read-transitions inf (getf header :transition-count)))
-             (subzone-indexes (%tz-read-indexes inf (getf header :transition-count)))
-             (subzone-raw-info (%tz-read-subzone inf (getf header :type-count)))
-             (leap-second-info (%tz-read-leap-seconds inf (getf header :leap-count)))
-             (abbreviation-buf (%tz-read-abbrevs inf (getf header :abbrev-length)))
-             (std-indicators (%tz-read-indicators inf (getf header :wall-count)))
-             (gmt-indicators (%tz-read-indicators inf (getf header :utc-count)))
-             (subzone-info (%tz-make-subzones subzone-raw-info
-                                              abbreviation-buf
-                                              gmt-indicators
-                                              std-indicators)))
+	  ;; read header values
+	  (let* ((header (%tz-read-header inf))
+		 (timezone-transitions
+		  (%tz-read-transitions inf (getf header :transition-count)))
+		 (subzone-indexes
+		  (%tz-read-indexes inf (getf header :transition-count)))
+		 (subzone-raw-info
+		  (%tz-read-subzone inf (getf header :type-count)))
+		 (leap-second-info
+		  (%tz-read-leap-seconds inf (getf header :leap-count)))
+		 (abbreviation-buf
+		  (%tz-read-abbrevs inf (getf header :abbrev-length)))
+		 (std-indicators
+		  (%tz-read-indicators inf (getf header :wall-count)))
+		 (gmt-indicators
+		  (%tz-read-indicators inf (getf header :utc-count)))
+		 (subzone-info
+		  (%tz-make-subzones subzone-raw-info
+				     abbreviation-buf
+				     gmt-indicators
+				     std-indicators)))
 
-        (setf (timezone-transitions zone) timezone-transitions)
-        (setf (timezone-indexes zone) subzone-indexes)
-        (setf (timezone-subzones zone) subzone-info)
-        (setf (timezone-leap-seconds zone) leap-second-info))
-      (setf (timezone-loaded-p zone) t)))
+	    (setf (timezone-transitions zone) timezone-transitions)
+	    (setf (timezone-indexes zone) subzone-indexes)
+	    (setf (timezone-subzones zone) subzone-info)
+	    (setf (timezone-leap-seconds zone) leap-second-info))
+	  (setf (timezone-loaded-p zone) t)))))
   zone)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
@@ -241,13 +253,18 @@
        :name name
        :loaded t))))
 
-(defparameter +utc-zone+ (%make-simple-timezone "Coordinated Universal Time" "UTC" 0))
+(defparameter +utc-zone+
+  (%make-simple-timezone "Coordinated Universal Time" "UTC" 0))
 
-(defparameter +gmt-zone+ (%make-simple-timezone "Greenwich Mean Time" "GMT" 0))
+(defparameter +gmt-zone+
+  (%make-simple-timezone "Greenwich Mean Time" "GMT" 0))
 
-(defparameter +none-zone+ (%make-simple-timezone "Explicit Offset Given" "NONE" 0))
+(defparameter +none-zone+
+  (%make-simple-timezone "Explicit Offset Given" "NONE" 0))
 
-(defun transition-position (needle haystack &optional (start 0) (end (1- (length haystack))))
+(defun transition-position (needle haystack
+				   &optional (start 0)
+				   (end (1- (length haystack))))
   (let ((middle (floor (+ end start) 2)))
     (cond
       ((> start end)
@@ -263,31 +280,11 @@
 
 
 ;; external methods
-(defmethod local-stamp->utc ((stamp integer) (zone (eql nil)))
-  stamp)
+(defmethod utc-stamp->offset ((stamp integer) (zone (eql nil)))
+  0)
 
-(defmethod local-stamp->utc ((stamp integer) (zone timezone))
-  "Return as multiple values the new stamp in UTC, a boolean daylight-saving-p,
-and the customary abbreviation of the timezone."
-  (let* ((stamp (- stamp +unix-epoch+))
-	 (zone (%realize-timezone zone))
-         (subzone-idx
-	  (if (zerop (length (timezone-indexes zone)))
-	      0
-	    (elt (timezone-indexes zone)
-		 (transition-position stamp
-				      (timezone-transitions zone)))))
-         (subzone (elt (timezone-subzones zone) subzone-idx)))
-    (values
-     (+ (- stamp (subzone-offset subzone)) +unix-epoch+)
-     (subzone-daylight-p subzone)
-     (subzone-abbrev subzone))))
-
-(defmethod utc-stamp->local ((stamp integer) (zone (eql nil)))
-  stamp)
-
-(defmethod utc-stamp->local ((stamp integer) (zone timezone))
-  "Return as multiple values the new stamp in local time, a boolean
+(defmethod utc-stamp->offset ((stamp integer) (zone timezone))
+  "Return as multiple values the offset east of UTC, a boolean
 daylight-saving-p, and the customary abbreviation of the timezone."
   (let* ((stamp (- stamp +unix-epoch+))
 	 (zone (%realize-timezone zone))
@@ -299,8 +296,9 @@ daylight-saving-p, and the customary abbreviation of the timezone."
 				      (timezone-transitions zone)))))
          (subzone (elt (timezone-subzones zone) subzone-idx)))
     (values
-     (+ stamp (subzone-offset subzone) +unix-epoch+)
+     (subzone-offset subzone)
      (subzone-daylight-p subzone)
      (subzone-abbrev subzone))))
+
 
 (provide "timezone")
