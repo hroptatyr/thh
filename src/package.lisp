@@ -18,11 +18,11 @@
 (defpackage :local-time
   (:use #:cl)
   (:export
+   #:timezone
+   #:timezonep
    #:make-timezone
-   #:%realize-timezone
-   #:transition-position
-   #:define-timezone
-   #:stamp-offset))
+   #:local-stamp->utc
+   #:utc-stamp->local))
 
 (defpackage :thhrule
   (:use

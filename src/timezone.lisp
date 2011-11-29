@@ -34,49 +34,68 @@
 (require "package")
 (in-package :local-time)
 
+
 ;;; Types
-
-(defclass timestamp ()
-  ((day :accessor day-of :initarg :day :initform 0 :type integer)
-   (sec :accessor sec-of :initarg :sec :initform 0 :type integer)
-   (nsec :accessor nsec-of :initarg :nsec :initform 0 :type (integer 0 999999999))))
-
 (defstruct subzone
   (abbrev nil)
   (offset nil)
   (daylight-p nil))
 
-(defstruct timezone
-  (transitions #(0) :type simple-vector)
-  (indexes #(0) :type simple-vector)
-  (subzones #() :type simple-vector)
-  (leap-seconds nil :type list)
-  (path nil)
-  (name "anonymous" :type string)
-  (loaded nil :type boolean))
+(defclass timezone ()
+  ((transitions
+    :initform #(0)
+    :accessor timezone-transitions
+    :type simple-vector)
+   (indexes
+    :initform #(0)
+    :accessor timezone-indexes
+    :type simple-vector)
+   (subzones
+    :initform #()
+    :initarg :subzones
+    :accessor timezone-subzones
+    :type simple-vector)
+   (leap-seconds
+    :initform nil
+    :accessor timezone-leap-seconds
+    :type list)
+   (path
+    :initarg :path
+    :accessor timezone-path)
+   (name
+    :initform "anonymous"
+    :initarg :name
+    :type string)
+   (loaded
+    :initform nil
+    :initarg :loaded
+    :accessor timezone-loaded-p
+    :type boolean)))
 
-(deftype timezone-offset ()
-  '(integer -43199 50400))
+(defmacro make-timezone (&rest keys)
+  `(make-instance 'timezone ,@keys))
 
+(defun timezonep (object)
+  (eql (type-of object) 'timezone))
 
+(defgeneric local-stamp->utc (stamp zone)
+  (:documentation
+   "Convert a unix time stamp, considered as local, to a utc stamp."))
+
+(defgeneric utc-stamp->local (stamp zone)
+  (:documentation
+   "Convert a unix time stamp, considered as utc, to a local stamp."))
+
+
 ;;; Variables
 
 (defparameter *default-timezone-repository-path*
   #P"/usr/share/zoneinfo/")
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (defparameter +rotated-month-days-without-leap-day+
-    #.(coerce #(31 30 31 30 31 31 30 31 30 31 31 28)
-              '(simple-array fixnum (*))))
+(defconstant +unix-epoch+ (encode-universal-time 0 0 0 1 1 1970))
 
-  (defparameter +rotated-month-offsets-without-leap-day+
-    (coerce
-     (cons 0
-           (loop with sum = 0
-                 for days :across +rotated-month-days-without-leap-day+
-                 collect (incf sum days)))
-     '(simple-array fixnum (*)))))
-
+
+;; low level reader
 (defun %read-binary-integer (stream byte-count &optional (signed nil))
   "Read BYTE-COUNT bytes from the binary stream STREAM, and return an integer which is its representation in network byte order (MSB).  If SIGNED is true, interprets the most significant bit as a sign indicator."
   (loop
@@ -166,8 +185,6 @@
 
 (defun %tz-make-subzones (raw-info abbrevs gmt-indicators std-indicators)
   (declare (ignore gmt-indicators std-indicators))
-  ;; TODO: handle TZ environment variables, which use the gmt and std
-  ;; indicators
   (make-array (length raw-info)
               :element-type 'subzone
               :initial-contents
@@ -179,7 +196,14 @@
 
 (defun %realize-timezone (zone &optional reload)
   "If timezone has not already been loaded or RELOAD is non-NIL, loads the timezone information from its associated unix file.  If the file is not a valid timezone file, the condition INVALID-TIMEZONE-FILE will be signaled."
-  (when (or reload (not (timezone-loaded zone)))
+  (when (or reload (not (timezone-loaded-p zone)))
+    (let ((realpath
+	   (or (probe-file (timezone-path zone))
+	       (probe-file (concatenate 'string
+					*default-timezone-repository-path*
+					(timezone-path zone))))))
+      (unless (setf (timezone-path zone) realpath)
+	(error "fjjffj")))
     (with-open-file (inf (timezone-path zone)
                          :direction :input
                          :element-type 'unsigned-byte)
@@ -203,7 +227,7 @@
         (setf (timezone-indexes zone) subzone-indexes)
         (setf (timezone-subzones zone) subzone-info)
         (setf (timezone-leap-seconds zone) leap-second-info))
-      (setf (timezone-loaded zone) t)))
+      (setf (timezone-loaded-p zone) t)))
   zone)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
@@ -211,7 +235,7 @@
     (let ((subzone (local-time::make-subzone :offset offset
 					     :daylight-p nil
 					     :abbrev abbrev)))
-      (local-time::make-timezone
+      (make-timezone
        :subzones (make-array 1 :initial-contents (list subzone))
        :path nil
        :name name
@@ -222,18 +246,6 @@
 (defparameter +gmt-zone+ (%make-simple-timezone "Greenwich Mean Time" "GMT" 0))
 
 (defparameter +none-zone+ (%make-simple-timezone "Explicit Offset Given" "NONE" 0))
-
-(defmacro define-timezone (zone-name zone-file)
-  "Define zone-name (a symbol or a string) as a new timezone, lazy-loaded from zone-file (a pathname designator relative to the zoneinfo directory on this system.  If load is true, load immediately."
-  (declare (type (or string symbol) zone-name))
-  (let ((zone-sym (if (symbolp zone-name) zone-name (intern zone-name))))
-    `(prog1
-	 (defparameter ,zone-sym
-	   (make-timezone :path ,zone-file
-			  :name ,(if (symbolp zone-name)
-				     (string-downcase (symbol-name zone-name))
-				   zone-name)))
-       ,@(%realize-timezone zone-sym))))
 
 (defun transition-position (needle haystack &optional (start 0) (end (1- (length haystack))))
   (let ((middle (floor (+ end start) 2)))
@@ -249,14 +261,16 @@
       (t
        (transition-position needle haystack start (1- middle))))))
 
-(defconstant +unix-epoch+ (encode-universal-time 0 0 0 1 1 1970))
+
+;; external methods
+(defmethod local-stamp->utc ((stamp integer) (zone (eql nil)))
+  stamp)
 
-(defun stamp-offset (stamp zone)
-  "Return as multiple values the time zone as the number of seconds east of UTC, a boolean daylight-saving-p, and the customary abbreviation of the timezone."
-  (declare (type (integer stamp))
-	   (type (or null zone) zone))
-  (let* ((zone (%realize-timezone zone))
-	 (stamp (- stamp +unix-epoch+))
+(defmethod local-stamp->utc ((stamp integer) (zone timezone))
+  "Return as multiple values the new stamp in UTC, a boolean daylight-saving-p,
+and the customary abbreviation of the timezone."
+  (let* ((stamp (- stamp +unix-epoch+))
+	 (zone (%realize-timezone zone))
          (subzone-idx
 	  (if (zerop (length (timezone-indexes zone)))
 	      0
@@ -265,7 +279,27 @@
 				      (timezone-transitions zone)))))
          (subzone (elt (timezone-subzones zone) subzone-idx)))
     (values
-     (subzone-offset subzone)
+     (+ (- stamp (subzone-offset subzone)) +unix-epoch+)
+     (subzone-daylight-p subzone)
+     (subzone-abbrev subzone))))
+
+(defmethod utc-stamp->local ((stamp integer) (zone (eql nil)))
+  stamp)
+
+(defmethod utc-stamp->local ((stamp integer) (zone timezone))
+  "Return as multiple values the new stamp in local time, a boolean
+daylight-saving-p, and the customary abbreviation of the timezone."
+  (let* ((stamp (- stamp +unix-epoch+))
+	 (zone (%realize-timezone zone))
+         (subzone-idx
+	  (if (zerop (length (timezone-indexes zone)))
+	      0
+	    (elt (timezone-indexes zone)
+		 (transition-position stamp
+				      (timezone-transitions zone)))))
+         (subzone (elt (timezone-subzones zone) subzone-idx)))
+    (values
+     (+ stamp (subzone-offset subzone) +unix-epoch+)
      (subzone-daylight-p subzone)
      (subzone-abbrev subzone))))
 

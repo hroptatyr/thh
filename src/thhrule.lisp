@@ -194,7 +194,7 @@
 
 ;; sessions and timezones and other auxiliary stuff
 (defmacro deftimezone (name value &optional doc)
-  `(defvar ,name ,value ,doc))
+  `(defparameter ,name ,(make-timezone :path value) ,doc))
 
 (defmacro defsession (name &optional doc)
   `(defvar ,name ,doc))
@@ -322,6 +322,12 @@
 (defmethod dt= ((s1 (eql nil)) s2)
   nil)
 
+(defmethod local-stamp->utc ((s stamp) (tz timezone))
+  (local-stamp->utc (get-unix s) tz))
+
+(defmethod utc-stamp->local ((s stamp) (tz timezone))
+  (utc-stamp->local (get-unix s) tz))
+
 ;; some macros
 (defmacro defrule (name &rest rest)
   "Define an event."
@@ -363,11 +369,11 @@
 	 (cu (mod (get-unix end/stamp) 86400))
 	 (from/stamp (or (parse-dtall from) +dawn-of-time+))
 	 (till/stamp (or (parse-dtall till) +dusk-of-time+))
-	 (zone (when (stringp timezone)
-		 (let ((path (concatenate 'string
-					  "/usr/share/zoneinfo/" timezone)))
-		   (make-timezone :path path
-				  :name (intern timezone))))))
+	 (zone (cond
+		((stringp timezone)
+		 (make-timezone :path path))
+		((timezonep timezone)
+		 timezone))))
     `(defrule ,name
        :from ,from/stamp
        :till ,till/stamp
@@ -378,9 +384,8 @@
        :next-lambda
        (lambda (stamp)
 	 (flet ((probe (day tim)
-		  (let* ((s (+ day tim))
-			 (off (stamp-offset s ,zone)))
-		    (make-datetime :unix (- s off)))))
+		  (let ((s (+ day tim)))
+		    (make-datetime :unix (local-stamp->utc s ,zone)))))
 	   (let* ((fu ,(get-unix from/stamp))
 		  (su (get-unix stamp))
 		  (stamp/midnight (midnight (max su fu) ,ou))
