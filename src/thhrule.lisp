@@ -549,7 +549,7 @@
 		 collect
 		 (multiple-value-bind (vals keys) (split-vals+keys r)
 		   (destructuring-bind (&key open close from till) keys
-		     (let ((name (gensym)))
+		     (let ((name (gensym (symbol-name name))))
 		       (eval `(defrule/daily ,name ,@keys
 				:start ,open
 				:end ,close
