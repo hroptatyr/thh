@@ -545,17 +545,38 @@
 	       :allow-other-keys t)
 	  ;; otherwise assume it's a list so we deliver a ruleset
 	  `(defruleset ,name
-	     ,@(loop for r in vals
+	     ,@(loop
+		 with prev-r = nil
+		 for r in vals
 		 collect
 		 (multiple-value-bind (vals keys) (split-vals+keys r)
+		   (declare (ignore vals))
 		   (destructuring-bind (&key open close from till) keys
-		     (let ((name (gensym (symbol-name name))))
+		     (declare (ignore till))
+		     (let ((name (gensym (symbol-name name)))
+			   rule)
 		       (eval `(defrule/daily ,name ,@keys
 				:start ,open
 				:end ,close
 				:start-state +market-open+
 				:end-state +market-close+
 				:allow-other-keys t))
+		       ;; chain from/till slots
+		       (setf rule (symbol-value name))
+		       (when (and prev-r
+				  from
+				  (eql (slot-value prev-r 'till)
+				       +dusk-of-time+))
+			 (setf (slot-value prev-r 'till)
+			       (slot-value rule 'from)))
+		       (when (and prev-r
+				  (null from)
+				  (not (eql (slot-value prev-r 'till)
+					    +dusk-of-time+)))
+			 (setf (slot-value rule 'from)
+			       (slot-value prev-r 'till)))
+		       (setf prev-r rule)
+		       ;; return the symbol so the ruleset makes sense
 		       name))))))))))
 
 (defmacro defholiday (name &rest vals+keys)
