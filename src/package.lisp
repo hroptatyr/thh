@@ -41,13 +41,11 @@
    #:defrule/weekly
    #:defrule/monthly
    #:defrule/yearly
-   #:deftrading-hours
-   #:defholiday
-   #:defholiday/weekly
-   #:defholiday/monthly
-   #:defholiday/yearly
-   #:defholiday/once
    #:defruleset
+
+   #:defmarket
+   #:defstate
+   #:defproduct
 
    #:deftimezone
    #:defsession
