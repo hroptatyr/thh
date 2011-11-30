@@ -89,28 +89,6 @@
      ((setq u (cybertiggyr-time::parse-time str +datetime-recognisers+))
       (make-datetime :unix u)))))
 
-;; other useful stuff
-(defun split-vals+keys (list)
-  (loop
-    with vals = nil
-    and keys = nil
-    while list
-    do (if (keywordp (car list))
-	   (setq keys (cons (car list) (cons (cadr list) keys))
-		 list (cddr list))
-	 (setq vals (cons (car list) vals)
-	       list (cdr list)))
-    finally (return (values (nreverse vals) keys))))
-
-(defun var-or-sym-value (var-or-sym)
-  (if (and (symbolp var-or-sym)
-	   (boundp var-or-sym))
-      (symbol-value var-or-sym)
-    var-or-sym))
-
-(defun var-or-sym-type-p (var-or-sym type)
-  (eql (type-of (var-or-sym-value var-or-sym)) type))
-
 
 ;; states
 (defconstant +market-last+ t)
