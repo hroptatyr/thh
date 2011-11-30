@@ -62,8 +62,9 @@
   (quit))
 
 #+sbcl
-(sb-ext:save-lisp-and-die "thhcc" :executable t :toplevel #'main)
+(sb-ext:save-lisp-and-die "thhcc.bin" :executable t :toplevel #'main)
 #+clisp
-(ext:saveinitmem "thhcc" :executable t :norc t :quiet t :init-function #'main)
+(ext:saveinitmem "thhcc.bin"
+		 :executable t :norc t :quiet t :init-function #'main)
 #+cmu
-(save-lisp "thhcc" :executable t :load-init-file nil :init-function #'main)
+(save-lisp "thhcc.bin" :executable t :load-init-file nil :init-function #'main)

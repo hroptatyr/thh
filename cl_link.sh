@@ -1,22 +1,26 @@
 #!/bin/sh
 
 LISPFLAV="${1}"
-OUTFILE="${2}"
-shift 2
+shift 1
 
 case "${LISPFLAV}" in
 *"clisp")
-	"${LISPFLAV}" "${OUTFILE}"
+	for arg; do
+		cat <<EOF
+(load #P"${arg}")
+EOF
+	done | "${LISPFLAV}"
 	;;
 *"sbcl")
 	for arg; do
-		srcfile=$(strings "${arg}" | \
-			grep -F "compiled from" | \
-			cut -d'"' -f2)
-		cat <<EOF
-(load #P"${srcfile}")
+		if test "${arg}" = "thhcc.o"; then
+			cat <<EOF
+--load '$(strings "${arg}" | grep -F "compiled from" | cut -d\" -f2 | head -n1)'
 EOF
-	done | "${LISPFLAV}"
+		else
+			echo "--load '${arg}'"
+		fi
+	done | xargs -n 4096 "${LISPFLAV}"
 	;;
 *)
 	echo "cannot link ${OUTFILE}" >&2

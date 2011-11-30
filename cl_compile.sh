@@ -8,7 +8,7 @@ sbcl_compile()
 {
 	if test $(basename "${INFILE}") != "package.lisp"; then
 		cat <<EOF
-(require "package" #P"package.fas")
+(require "package" #P"package.o")
 EOF
 	fi
 	cat <<EOF
