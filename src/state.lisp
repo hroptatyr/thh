@@ -60,9 +60,6 @@
   (multiple-value-bind (vals keys) (split-vals+keys v+k)
     (apply #'make-instance 'state keys)))
 
-(defmacro pushnew-many (place list)
-  `(setf ,place (union ,place ,list)))
-
 (defgeneric state-inhibits (s &rest states))
 (defmethod state-inhibits ((s state) &rest states)
   (pushnew-many (inhibitions-of s) states))

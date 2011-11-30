@@ -57,6 +57,14 @@
   (multiple-value-bind (vals keys) (split-vals+keys v+k)
     (apply #'make-instance 'market keys)))
 
+(defgeneric market-add-states (m &rest states))
+(defmethod market-add-states ((m market) &rest states)
+  (pushnew-many (states-of m) states))
+
+(defgeneric market-add-products (m &rest products))
+(defmethod market-add-states ((m market) &rest products)
+  (pushnew-many (products-of m) products))
+
 (defmacro defmarket (name &rest v+k)
   `(let ((mkt (make-market ,@v+k :name ',name)))
      ;; stuff that makes sense in conjunction with state or product
@@ -67,13 +75,9 @@
 	  (,(sym-conc mkt/st '-add-markets) ,,name)))
      ;; stuff that needs to close over ST
      (defun ,(sym-conc name '-add-states) (&rest states)
-       (nconc-or-setf-or-leave-t
-	(states-of mkt)
-	(mapcar #'var-or-sym-value states)))
+       (apply #'market-add-states mkt states))
      (defun ,(sym-conc name '-add-products) (&rest products)
-       (nconc-or-setf-or-leave-t
-	(products-of mkt)
-	(mapcar #'var-or-sym-value products)))
+       (apply #'market-add-products mkt products))
      ;; and finally inject to environ
      (defvar ,name mkt)))
 
