@@ -60,17 +60,8 @@
   (multiple-value-bind (vals keys) (split-vals+keys v+k)
     (apply #'make-instance 'state keys)))
 
-(defmacro nconc-or-setf-or-leave-t (val &rest more)
-  `(cond
-    ((eql ,val t)
-     t)
-    (,val
-     (nconc ,val ,@more))
-    (t
-     (setf ,val ,@more))))
-
 (defmacro defstate (name &rest v+k)
-  `(let ((st (make-state ,@v+k)))
+  `(let ((st (make-state ,@v+k :name ',name)))
      ;; stuff that needs to close over ST
      (defun ,(sym-conc name '-inhibits) (&rest states)
        (nconc-or-setf-or-leave-t

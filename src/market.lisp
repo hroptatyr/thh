@@ -42,9 +42,39 @@
     :accessor name-of)
    (timezone
     :initarg :timezone
-    :accessor timezone-of)))
+    :initform local-time::+utc-zone+
+    :accessor timezone-of)
+   (products
+    :initarg :products
+    :initform nil
+    :accessor products-of)
+   (states
+    :initarg :states
+    :initform nil
+    :accessor states-of)))
+
+(defun make-market (&rest v+k)
+  (multiple-value-bind (vals keys) (split-vals+keys v+k)
+    (apply #'make-instance 'market keys)))
 
 (defmacro defmarket (name &rest v+k)
-  nil)
+  `(let ((mkt (make-market ,@v+k :name ',name)))
+     ;; stuff that makes sense in conjunction with state or product
+     (defmacro ,(sym-conc 'def name '-product) (name &rest v+k))
+     (defmacro ,(sym-conc 'def name '-state) (name &rest v+k)
+       `(let ((mkt/st ,(sym-conc ,name '/ name)))
+	  (defstate ,mkt/st ,@v+k)
+	  (,(sym-conc mkt/st '-add-markets) ,,name)))
+     ;; stuff that needs to close over ST
+     (defun ,(sym-conc name '-add-states) (&rest states)
+       (nconc-or-setf-or-leave-t
+	(states-of mkt)
+	(mapcar #'var-or-sym-value states)))
+     (defun ,(sym-conc name '-add-products) (&rest products)
+       (nconc-or-setf-or-leave-t
+	(products-of mkt)
+	(mapcar #'var-or-sym-value products)))
+     ;; and finally inject to environ
+     (defvar ,name mkt)))
 
 (provide "market")

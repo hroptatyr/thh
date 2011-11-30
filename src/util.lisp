@@ -495,6 +495,15 @@
      (apply #'concatenate 'string
        (mapcar #'sym-or-string-name syms-or-strings)))))
 
+(defmacro nconc-or-setf-or-leave-t (val &rest more)
+  `(cond
+    ((eql ,val t)
+     t)
+    (,val
+     (nconc ,val ,@more))
+    (t
+     (setf ,val ,@more))))
+
 
 (provide :thhrule.util)
 (provide "util")
