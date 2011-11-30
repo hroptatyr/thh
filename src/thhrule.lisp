@@ -99,7 +99,7 @@
 (defparameter +states+
   '(+market-last+ +market-open+ +market-close+ +market-force+))
 
-(deftype state () `(member ,@+states+))
+;;(deftype state () `(member ,@+states+))
 
 (defmethod state< (s1 s2)
   ;; s1 < s2 iff s1 further left in +states+

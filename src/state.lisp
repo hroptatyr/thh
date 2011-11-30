@@ -60,21 +60,34 @@
   (multiple-value-bind (vals keys) (split-vals+keys v+k)
     (apply #'make-instance 'state keys)))
 
+(defmacro pushnew-many (place list)
+  `(setf ,place (union ,place ,list)))
+
+(defgeneric state-inhibits (s &rest states))
+(defmethod state-inhibits ((s state) &rest states)
+  (pushnew-many (inhibitions-of s) states))
+
+(defgeneric state-implies (s &rest states))
+(defmethod state-implies ((s state) &rest states)
+  (pushnew-many (implications-of s) states))
+
+(defgeneric state-add-markets (s &rest markets))
+(defmethod state-add-markets ((s state) &rest markets)
+  (pushnew-many (markets-of s) markets))
+
 (defmacro defstate (name &rest v+k)
   `(let ((st (make-state ,@v+k :name ',name)))
+
      ;; stuff that needs to close over ST
      (defun ,(sym-conc name '-inhibits) (&rest states)
-       (nconc-or-setf-or-leave-t
-	(inhibitions-of st)
-	(mapcar #'var-or-sym-value states)))
+       (apply #'state-inhibits st states))
+
      (defun ,(sym-conc name '-implies) (&rest states)
-       (nconc-or-setf-or-leave-t
-	(implications-of st)
-	(mapcar #'var-or-sym-value states)))
+       (apply #'state-implies st states))
+
      (defun ,(sym-conc name '-add-markets) (&rest markets)
-       (nconc-or-setf-or-leave-t
-	(markets-of st)
-	(mapcar #'var-or-sym-value markets)))
+       (apply #'state-add-markets st markets))
+
      ;; and finally inject to environ
      (defvar ,name st)))
 
