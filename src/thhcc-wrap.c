@@ -53,7 +53,7 @@ static char*
 find_thhcc(const char *cur)
 {
 	static const char bin_ext[] = BIN_EXT;
-	static char bin_img[] = LIBEXECDIR BIN_IMG;
+	static char bin_img[] = LIBEXECDIR "/" BIN_IMG;
 	struct stat st;
 	char *new_path;
 	size_t cur_len;
