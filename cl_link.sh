@@ -13,7 +13,13 @@ EOF
 	;;
 *"sbcl")
 	for arg; do
-		echo -e "--load '${arg}'"
+		if test "${arg}" = "thhcc.o"; then
+			cat <<EOF
+--load '$(strings "${arg}" | grep -F "compiled from" | cut -d\" -f2 | head -n1)'
+EOF
+		else
+			echo "--load '${arg}'"
+		fi
 	done | xargs -n 4096 "${LISPFLAV}"
 	;;
 *)
