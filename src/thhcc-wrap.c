@@ -46,34 +46,32 @@
 #if !defined LIBEXECDIR
 # define LIBEXECDIR	"../libexec"
 #endif	/* !LIBEXECDIR */
-
-static int
-test_thhcc(char *rpath, size_t rpsz, size_t bsz, const char *p)
-{
-	struct stat st;
-
-	snprintf(rpath + rpsz, bsz - rpsz, "%s/thhcc.bin", p);
-	return stat(rpath, &st) == 0 &&
-		st.st_mode & S_IXUSR;
-}
+#define BIN_EXT		".bin"
+#define BIN_IMG		"thhcc" BIN_EXT
 
 static char*
-find_thhcc(const char *cur_argv)
+find_thhcc(const char *cur)
 {
-	static char exe[] = "/proc/self/exe";
-	char path[1024];
-	char *last_slash;
-	size_t size;
+	static const char bin_ext[] = BIN_EXT;
+	static char bin_img[] = LIBEXECDIR BIN_IMG;
+	struct stat st;
+	char *new_path;
+	size_t cur_len;
 
-	if ((size = readlink(exe, path, sizeof(path) - 1)) < 0 ||
-	    (last_slash = strrchr(path, '/')) == NULL) {
-		return NULL;
+	cur_len = strlen(cur);
+	new_path = malloc(cur_len + sizeof(bin_ext));
+	memcpy(new_path, cur, cur_len);
+	memcpy(new_path + cur_len, bin_ext, sizeof(bin_ext));
+
+	if ((stat(new_path, &st) == 0) && (st.st_mode & S_IXUSR)) {
+		return new_path;
 	}
 
-	size = last_slash - path + 1;
-	if (test_thhcc(path, size, sizeof(path), LIBEXECDIR) ||
-	    test_thhcc(path, size, sizeof(path), ".")) {
-		return strdup(path);
+	/* try libexec dir, only if absolute */
+	free(new_path);
+	if (bin_img[0] == '/' &&
+	    (stat(bin_img, &st) == 0) && (st.st_mode & S_IXUSR)) {
+		return bin_img;
 	}
 	return NULL;
 }
@@ -123,7 +121,6 @@ main(int argc, char *argv[])
 			new_argv[3] = year;
 		}
 		execv(bin, new_argv);
-		free(bin);
 		res = 1;
 	}
 out:
