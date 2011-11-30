@@ -23,7 +23,7 @@ thhcc_bin_LINK = $(CL_LINK)
 
 bin_PROGRAMS += thhcc
 thhcc_SOURCES = thhcc-wrap.c thhcc-clo.ggo
-thhcc_CPPFLAGS = $(AM_CPPFLAGS)
+thhcc_CPPFLAGS = $(AM_CPPFLAGS) -DLIBEXECDIR=\"$(libexecdir)\"
 thhcc_LDFLAGS = $(AM_LDFLAGS)
 BUILT_SOURCES += thhcc-clo.c thhcc-clo.h
 
