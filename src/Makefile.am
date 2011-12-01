@@ -20,6 +20,7 @@ thhcc_bin_SOURCES += copy-instance.lisp
 thhcc_bin_SOURCES += market.lisp
 thhcc_bin_SOURCES += product.lisp
 thhcc_bin_SOURCES += state.lisp
+thhcc_bin_SOURCES += rule.lisp
 thhcc_bin_SOURCES += thhrule.lisp
 thhcc_bin_SOURCES += thhcc.lisp
 thhcc_bin_LINK = $(CL_LINK)
@@ -35,9 +36,10 @@ time.o: package.o
 timezone.o: package.o
 copy-instance.o: package.o
 predef.o: package.o util.o
-state.o: package.o market.o
+state.o: package.o
+rule.o: package.o
 thhrule.o: package.o util.o time.o timezone.o copy-instance.o \
-	market.o product.o state.o
+	market.o product.o state.o rule.o
 thhcc.o: package.o thhrule.o predef.o
 
 

@@ -38,6 +38,7 @@
 (require "time")
 (require "copy-instance")
 (require "timezone")
+(require "rule")
 (in-package :thhrule)
 
 
@@ -187,53 +188,6 @@
   `(defvar ,name ,doc))
 
 
-;; rule class
-(defparameter +dawn-of-time+ (make-stamp :unix 0))
-(defparameter +dusk-of-time+ (make-stamp :unix 4294967295))
-
-(defclass rule ()
-  (
-   ;; validity forms first
-   (from
-    :initarg :from
-    :initform +dawn-of-time+)
-   (till
-    :initarg :till
-    :initform +dusk-of-time+)
-   ;; stream closure, takes stamp and returns the next occurrence
-   (next-lambda
-    :initarg :next-lambda
-    :type function)
-   (next
-    :initarg :next
-    :type stamp)
-   (state-start
-    :initarg :state-start
-    :reader get-start-state
-    :type state)
-   (state-end
-    :initarg :state-end
-    :reader get-end-state
-    :type state)
-   (timezone
-    :initarg :timezone
-    :accessor timezone-of)
-   (in-lieu
-    :initform nil
-    :reader in-lieu-of
-    :initarg :in-lieu)
-   (name
-    :initarg :name
-    :reader get-name)))
-
-(defmacro make-rule (&rest stuff)
-  `(make-instance 'rule ,@stuff))
-
-(defmethod print-object ((r rule) out)
-  (with-slots (name) r
-    (print-unreadable-object (r out :type t)
-      (format out "~a" name))))
-
 (defgeneric parse-date (thing))
 (defgeneric parse-time (thing))
 (defgeneric parse-datetime (thing))
@@ -331,10 +285,6 @@
   (- s (utc-stamp->offset s tz)))
 
 ;; some macros
-(defmacro defrule (name &rest rest)
-  "Define an event."
-  `(defvar ,name (make-rule ,@rest)))
-
 (defmacro defrule/once (name &key from till on (for 1)
 			     in-year function
 			     (start-state '+market-last+)

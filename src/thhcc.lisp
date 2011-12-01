@@ -3,6 +3,14 @@
 (require "predef")
 (use-package :thhrule)
 
+;; old stuff
+(import 'thhrule::deftrading-hours)
+(import 'thhrule::defholiday/yearly)
+(import 'thhrule::defholiday/monthly)
+(import 'thhrule::defholiday/weekly)
+(import 'thhrule::defholiday/once)
+(import 'thhrule::defholiday)
+
 
 (defun my-command-line ()
   (or 

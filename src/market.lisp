@@ -63,7 +63,7 @@
   (pushnew-many (states-of m) states))
 
 (defgeneric market-add-products (m &rest products))
-(defmethod market-add-states ((m market) &rest products)
+(defmethod market-add-products ((m market) &rest products)
   (pushnew-many (products-of m) products))
 
 (defmacro defmarket (name &rest v+k)

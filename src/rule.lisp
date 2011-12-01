@@ -1,4 +1,4 @@
-;;; product -- notion of products
+;;; rule -- notion of rules, market, product or state rules
 ;;
 ;; Copyright (C) 2011 Sebastian Freundt
 ;;
@@ -37,28 +37,65 @@
 (require "util")
 (in-package :thhrule)
 
-(defclass product ()
-  ((name
+;; rule class
+(defparameter +dawn-of-time+ (make-stamp :unix 0))
+(defparameter +dusk-of-time+ (make-stamp :unix 4294967295))
+
+(defclass rule ()
+  (
+   ;; validity forms first
+   (from
+    :initarg :from
+    :initform +dawn-of-time+)
+   (till
+    :initarg :till
+    :initform +dusk-of-time+)
+   ;; stream closure, takes stamp and returns the next occurrence
+   (next-lambda
+    :initarg :next-lambda
+    :type function)
+   (next
+    :initarg :next
+    :type stamp)
+   (state
+    :initarg :state
+    :initform nil
+    :accessor state-of
+    :type state)
+   (state-start
+    :initarg :state-start
+    :reader get-start-state
+    :type state)
+   (state-end
+    :initarg :state-end
+    :reader get-end-state
+    :type state)
+   (timezone
+    :initarg :timezone
+    :accessor timezone-of)
+   (in-lieu
+    :initform nil
+    :reader in-lieu-of
+    :initarg :in-lieu)
+   (name
     :initarg :name
-    :accessor name-of)
-   (markets
-    :initarg :markets
-    :accessor markets-of)))
+    :reader get-name)))
 
-(defun make-product (&rest v+k)
+(defun make-rule (&rest v+k)
   (multiple-value-bind (vals keys) (split-vals+keys v+k)
-    (apply #'make-instance 'state keys)))
+    (apply #'make-instance 'rule keys)))
 
-(defgeneric product-add-markets (p &rest markets))
-(defmethod product-add-markets ((p product) &rest markets)
-  (pushnew-many (markets-of p) markets))
+(defmethod print-object ((r rule) out)
+  (with-slots (name) r
+    (print-unreadable-object (r out :type t)
+      (format out "~a" name))))
 
-(defmacro defproduct (name &rest v+k)
-  `(let ((prod (make-product ,@v+k :name ',name)))
-     ;; stuff that needs to close over PROD
-     (defun ,(sym-conc name '-add-markets (&rest markets))
-       (apply #'product-add-markets prod markets))
+(defmacro defrule (name &rest v+k)
+  `(let ((r (make-rule ,@v+k :name ',name)))
+
+     ;; stuff that needs to close over R
+
      ;; and finally inject to environ
-     (defvar ,name prod)))
+     (defvar ,name r)))
 
-(provide "product")
+(provide "rule")
