@@ -240,7 +240,7 @@
 	   ((dt> metronome till)
 	    nil)
 	   ((and (slot-boundp r 'next)
-		 (or (null next) (dt>= (get-start next) metronome)))
+		 (or (null next) (dt>= (get-interval-start next) metronome)))
 	    next)
 	   ((and (slot-boundp r 'next-lambda)
 		 (functionp next-lambda))
