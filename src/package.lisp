@@ -36,17 +36,20 @@
    #:get-unix
    #:get-year
    #:get-mon
+   #:get-mon/num
+   #:get-mon/sym
    #:get-dom
    #:get-hour
    #:get-min
    #:get-sec
-
+   #:get-dow
    #:get-dow/num
    #:get-dow/sym
-   #:get-mon/num
-   #:get-mon/sym
 
    #:make-interval
+   #:get-interval-start
+   #:get-interval-end
+   #:get-interval-length
 
    #:d+
    #:d-
