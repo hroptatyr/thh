@@ -103,7 +103,9 @@
 (defmacro defrule/once (name &key from till on (for 1)
 			     in-year function
 			     (start-state '+market-last+)
-			     (end-state '+market-last+))
+			     (end-state '+market-last+)
+			     state
+			     &allow-other-keys)
   "Define a one-off event."
   (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
 	(till/stamp (or (parse-dtall till) +dusk-of-time+))
@@ -119,6 +121,7 @@
        :till ,till/stamp
        :state-start ',start-state
        :state-end ',end-state
+       :state ,state
        :name ',name
        :next
        ,(if (and (d>= on/stamp from/stamp) (d<= on/stamp till/stamp))
@@ -176,7 +179,9 @@
 
 (defmacro defrule/weekly (name &key from till on (for 1)
 			       (start-state '+market-last+)
-			       (end-state '+market-last+))
+			       (end-state '+market-last+)
+			       state
+			       &allow-other-keys)
   (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
 	(till/stamp (or (parse-dtall till) +dusk-of-time+))
 	(on/sym (get-dow/sym on)))
@@ -185,6 +190,7 @@
        :till ,till/stamp
        :state-start ',start-state
        :state-end ',end-state
+       :state ,state
        :name ',name
        :next-lambda
        (lambda (stamp)
@@ -203,7 +209,9 @@
 				in-lieu
 				(for 1)
 				(start-state '+market-last+)
-				(end-state '+market-last+))
+				(end-state '+market-last+)
+				state
+				&allow-other-keys)
   (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
 	(till/stamp (or (parse-dtall till) +dusk-of-time+)))
     (let ((probe-fun
@@ -223,6 +231,7 @@
 	 :till ,till/stamp
 	 :state-start ',start-state
 	 :state-end ',end-state
+	 :state ,state
 	 :name ',name
 	 :in-lieu ,in-lieu
 	 :next-lambda
@@ -241,7 +250,9 @@
 			       in-lieu
 			       (for 1)
 			       (start-state '+market-last+)
-			       (end-state '+market-last+))
+			       (end-state '+market-last+)
+			       state
+			       &allow-other-keys)
   (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
 	(till/stamp (or (parse-dtall till) +dusk-of-time+))
 	(in/num (get-mon/num in)))
@@ -262,6 +273,7 @@
 	 :till ,till/stamp
 	 :state-start ',start-state
 	 :state-end ',end-state
+	 :state ,state
 	 :name ',name
 	 :in-lieu ,in-lieu
 	 :next-lambda
