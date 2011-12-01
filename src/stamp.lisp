@@ -236,9 +236,9 @@
 (defun get-mon/num (mon)
   (cond
    ((stringp mon)
-    (position (intern mon 'thhrule) +month-of-year+))
+    (position (intern mon 'stamp) +month-of-year+))
    ((symbolp mon)
-    (position (intern (symbol-name mon) 'thhrule) +month-of-year+))
+    (position (intern (symbol-name mon) 'stamp) +month-of-year+))
    ((numberp mon)
     mon)))
 
@@ -250,7 +250,7 @@
 	      (symbol-name dow))
 	     ((stringp dow)
 	      dow))
-	    'thhrule)))
+	    'stamp)))
 
 (defun get-dow/num (dow)
   (if (numberp dow)
