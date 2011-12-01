@@ -249,7 +249,9 @@
 	     ((symbolp dow)
 	      (symbol-name dow))
 	     ((stringp dow)
-	      dow))
+	      dow)
+	     (t
+	      "MIR"))
 	    'stamp)))
 
 (defun get-dow/num (dow)
@@ -438,6 +440,9 @@
 (defmethod dt<= ((i1 interval) (i2 interval))
   (not (dt> i1 i2)))
 
+(defgeneric containsp (thing thing)
+  (:documentation "Whether the first thing contains the second."))
+
 (defmethod containsp ((i interval) (s stamp))
   "Return non-NIL when I contains S."
   (and (d>= s (get-interval-start i))
@@ -447,6 +452,9 @@
   "Return non-NIL when I1 contains I2."
   (and (containsp i1 (get-interval-start i2))
        (containsp i1 (get-interval-end i2))))
+
+(defgeneric connectedp (thing thing)
+  (:documentation "Whether things are connected in some sense."))
 
 (defmethod connectedp ((i interval) (s stamp))
   "Return non-NIL when there is no datetime point between I and S."
