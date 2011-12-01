@@ -61,6 +61,10 @@
   (multiple-value-bind (vals keys) (split-vals+keys v+k)
     (apply #'make-instance 'state keys)))
 
+(defmethod print-object ((s state) out)
+  (print-unreadable-object (r out :type t)
+    (format out "~a" (name-of s))))
+
 (defgeneric state-inhibits (s &rest states))
 (defmethod state-inhibits ((s state) &rest states)
   (pushnew-many (inhibitions-of s) states))
@@ -75,6 +79,8 @@
 
 (defmacro defstate (name &rest v+k)
   `(let ((st (make-state ,@v+k :name ',name)))
+     ;; convenience
+     (defrule-macros ,name)
 
      ;; stuff that needs to close over ST
      (defun ,(sym-conc name '-inhibits) (&rest states)

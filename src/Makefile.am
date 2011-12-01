@@ -36,8 +36,10 @@ time.o: package.o
 timezone.o: package.o
 copy-instance.o: package.o
 predef.o: package.o util.o
-state.o: package.o
-rule.o: package.o
+state.o: package.o util.o
+rule.o: package.o util.o
+product.o: package.o util.o
+market.o: package.o util.o timezone.o
 thhrule.o: package.o util.o time.o timezone.o copy-instance.o \
 	market.o product.o state.o rule.o
 thhcc.o: package.o thhrule.o predef.o

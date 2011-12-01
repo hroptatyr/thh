@@ -34,6 +34,7 @@
 ;; IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (require "package")
+(require "timezone")
 (require "util")
 (in-package :thhrule)
 
@@ -58,6 +59,10 @@
   (multiple-value-bind (vals keys) (split-vals+keys v+k)
     (apply #'make-instance 'market keys)))
 
+(defmethod print-object ((m market) out)
+  (print-unreadable-object (m out :type t)
+    (format out "~a" (name-of m))))
+
 (defgeneric market-add-states (m &rest states))
 (defmethod market-add-states ((m market) &rest states)
   (pushnew-many (states-of m) states))
@@ -69,11 +74,16 @@
 (defmacro defmarket (name &rest v+k)
   `(let ((mkt (make-market ,@v+k :name ',name)))
      ;; stuff that makes sense in conjunction with state or product
-     (defmacro ,(sym-conc 'def name '-product) (name &rest v+k))
+     (defmacro ,(sym-conc 'def name '-product) (name &rest v+k)
+       (let ((mkt/prod (sym-conc ',name '/ name)))
+	 `(progn
+	    (defproduct ,mkt/prod ,@v+k)
+	    (product-add-markets ,mkt/prod ,,name))))
      (defmacro ,(sym-conc 'def name '-state) (name &rest v+k)
-       `(let ((mkt/st ,(sym-conc ,name '/ name)))
-	  (defstate ,mkt/st ,@v+k)
-	  (,(sym-conc mkt/st '-add-markets) ,,name)))
+       (let ((mkt/st (sym-conc ',name '/ name)))
+	 `(progn
+	    (defstate ,mkt/st ,@v+k)
+	    (state-add-markets ,mkt/st ,,name))))
      ;; stuff that needs to close over ST
      (defun ,(sym-conc name '-add-states) (&rest states)
        (apply #'market-add-states mkt states))

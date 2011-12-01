@@ -79,6 +79,7 @@
     :initarg :in-lieu)
    (name
     :initarg :name
+    :accessor name-of
     :reader get-name)))
 
 (defun make-rule (&rest v+k)
@@ -86,9 +87,8 @@
     (apply #'make-instance 'rule keys)))
 
 (defmethod print-object ((r rule) out)
-  (with-slots (name) r
-    (print-unreadable-object (r out :type t)
-      (format out "~a" name))))
+  (print-unreadable-object (r out :type t)
+    (format out "~a" (name-of r))))
 
 (defmacro defrule (name &rest v+k)
   `(let ((r (make-rule ,@v+k :name ',name)))
@@ -97,5 +97,208 @@
 
      ;; and finally inject to environ
      (defvar ,name r)))
+
+
+;; actual functionality
+(defmacro defrule/once (name &key from till on (for 1)
+			     in-year function
+			     (start-state '+market-last+)
+			     (end-state '+market-last+))
+  "Define a one-off event."
+  (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
+	(till/stamp (or (parse-dtall till) +dusk-of-time+))
+	(on/stamp
+	 (cond
+	  ((and (eql (car function) 'function)
+		(numberp (eval in-year)))
+	   (funcall (eval function) (eval in-year)))
+	  (t
+	   (parse-date on)))))
+    `(defrule ,name
+       :from ,from/stamp
+       :till ,till/stamp
+       :state-start ',start-state
+       :state-end ',end-state
+       :name ',name
+       :next
+       ,(if (and (d>= on/stamp from/stamp) (d<= on/stamp till/stamp))
+	    (make-interval :start on/stamp :length for)
+	  ;; otherwise the user is obviously confused
+	  nil))))
+
+(defmacro defrule/daily (name &key from till start end
+			      timezone
+			      (start-state '+market-last+)
+			      (end-state '+market-last+))
+  (let* ((sta/stamp (parse-time start))
+	 (end/stamp (parse-time end))
+	 (from/stamp (or (parse-dtall from) +dawn-of-time+))
+	 (till/stamp (or (parse-dtall till) +dusk-of-time+))
+	 (zone (var-or-sym-value timezone))
+	 (zone (cond
+		((stringp zone)
+		 (make-timezone :path timezone))
+		((timezonep zone)
+		 zone)))
+	 (next-lambda (gensym (symbol-name name))))
+
+    `(let ((rule
+	    (make-rule
+	     :from ,from/stamp
+	     :till ,till/stamp
+	     :timezone ,zone
+	     :state-start ',start-state
+	     :state-end ',end-state
+	     :name ',name))
+	   (ou (mod ,(get-unix sta/stamp) 86400))
+	   (cu (mod ,(get-unix end/stamp) 86400))
+	   (zone ,zone))
+       ;; close over the rule, and stuff like the open and close times
+       (defun ,next-lambda (stamp)
+	 (with-slots (from till timezone) rule
+	   (flet ((probe (day timeofday)
+		    (let ((s (+ day timeofday)))
+		      (make-datetime :unix (local-stamp->utc s timezone)))))
+	     (let* ((fu (get-unix from))
+		    (su (utc-stamp->local (get-unix stamp) timezone))
+		    (stamp/midnight (midnight (max su fu) ou))
+		    (probe/o (probe stamp/midnight ou))
+		    (probe/c (probe stamp/midnight cu)))
+	       (when (dt<= probe/o till)
+		 (make-interval :start probe/o :end probe/c))))))
+       ;; assign the closure as next-lambda
+       (setf (slot-value rule 'next-lambda) #',next-lambda)
+       (defvar ,name rule))))
+
+(defmacro defrule/weekly (name &key from till on (for 1)
+			       (start-state '+market-last+)
+			       (end-state '+market-last+))
+  (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
+	(till/stamp (or (parse-dtall till) +dusk-of-time+))
+	(on/sym (get-dow/sym on)))
+    `(defrule ,name
+       :from ,from/stamp
+       :till ,till/stamp
+       :state-start ',start-state
+       :state-end ',end-state
+       :name ',name
+       :next-lambda
+       (lambda (stamp)
+	 (do* ((sf (get-unix ,from/stamp))
+	       (ss (get-unix stamp))
+	       (s (midnight (max sf ss) 0) (+ 86400 s))
+	       (probe))
+	     ((and (eql (get-dow (setq probe (make-date :unix s))) ',on/sym)
+		   (dt>= probe stamp))
+	      (if (d<= probe ,till/stamp)
+		  (make-interval :start probe :length ,for))))))))
+
+(defmacro defrule/monthly (name &key from till on which
+				;; by-year+month
+				function
+				in-lieu
+				(for 1)
+				(start-state '+market-last+)
+				(end-state '+market-last+))
+  (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
+	(till/stamp (or (parse-dtall till) +dusk-of-time+)))
+    (let ((probe-fun
+	   (cond
+	    ((and (null function) (null which))
+	     (lambda (year month)
+	       (make-date :year year :mon month :dom on)))
+	    ((null function)
+	     (lambda (year month)
+	       (make-ymcw :year year :mon month :dow on :which which)))
+	    ((eql (car function) 'function)
+	     (eval function))
+	    (t
+	     (error "~a is not a function" function)))))
+      `(defrule ,name
+	 :from ,from/stamp
+	 :till ,till/stamp
+	 :state-start ',start-state
+	 :state-end ',end-state
+	 :name ',name
+	 :in-lieu ,in-lieu
+	 :next-lambda
+	 (lambda (stamp)
+	   (do* ((ym (max-stamp ,from/stamp stamp))
+		 (m (get-mon ym) (if (> (1+ m) 12) 1 (1+ m)))
+		 (y (get-year ym) (if (= m 1) (1+ y) y))
+		 (probe))
+	       ((dt>= (setq probe (funcall ,probe-fun y m)) stamp)
+		(if (d<= probe ,till/stamp)
+		    (make-interval :start probe :length ,for)))))))))
+
+(defmacro defrule/yearly (name &key from till in on which
+			       ;; by-year
+			       function
+			       in-lieu
+			       (for 1)
+			       (start-state '+market-last+)
+			       (end-state '+market-last+))
+  (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
+	(till/stamp (or (parse-dtall till) +dusk-of-time+))
+	(in/num (get-mon/num in)))
+    (let ((probe-fun
+	   (cond
+	    ((and (null function) (null which))
+	     (lambda (year)
+	       (make-date :year year :mon in/num :dom on)))
+	    ((null function)
+	     (lambda (year)
+	       (make-ymcw :year year :mon in/num :dow on :which which)))
+	    ((eql (car function) 'function)
+	     (eval function))
+	    (t
+	     (error "~a is not a function" function)))))
+      `(defrule ,name
+	 :from ,from/stamp
+	 :till ,till/stamp
+	 :state-start ',start-state
+	 :state-end ',end-state
+	 :name ',name
+	 :in-lieu ,in-lieu
+	 :next-lambda
+	 (lambda (stamp)
+	   (do* ((ys (get-year stamp))
+		 (yf ,(get-year from/stamp))
+		 (y (max ys yf) (1+ y))
+		 (probe))
+	       ((dt>= (setq probe (funcall ,probe-fun y)) stamp)
+		(if (d<= probe ,till/stamp)
+		    (make-interval :start probe :length ,for)))))))))
+
+
+;; super macros
+(defmacro defrule-macros (name)
+  ;; convenience macros
+  (let* ((defname (sym-conc 'def name))
+	 (defname-rule (if (eql name 'rule)
+			   defname
+			 (sym-conc defname '-rule)))
+	 (defname/once (sym-conc defname '/once))
+	 (defname/daily (sym-conc defname '/daily))
+	 (defname/weekly (sym-conc defname '/weekly))
+	 (defname/monthly (sym-conc defname '/monthly))
+	 (defname/quarterly (sym-conc defname '/quarterly))
+	 (defname/yearly (sym-conc defname '/yearly)))
+     `(progn
+	(defmacro ,defname/once (name &rest v+k)
+	  `(defrule/once ,name ,@v+k))
+	(defmacro ,defname/daily (name &rest v+k)
+	  `(defrule/daily ,name ,@v+k))
+	(defmacro ,defname/weekly (name &rest v+k)
+	  `(defrule/weekly ,name ,@v+k))
+	(defmacro ,defname/monthly (name &rest v+k)
+	  `(defrule/monthly ,name ,@v+k))
+	(defmacro ,defname/quarterly (name &rest v+k)
+	  `(defrule/quarterly ,name ,@v+k))
+	(defmacro ,defname/yearly (name &rest v+k)
+	  `(defrule/yearly ,name ,@v+k))
+	;; lastly define the guy they all refer to
+	(defmacro ,defname-rule (name &rest v+k)
+	  `(defrule ,name ,@v+k)))))
 
 (provide "rule")

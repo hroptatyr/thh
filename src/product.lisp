@@ -43,11 +43,16 @@
     :accessor name-of)
    (markets
     :initarg :markets
+    :initform nil
     :accessor markets-of)))
 
 (defun make-product (&rest v+k)
   (multiple-value-bind (vals keys) (split-vals+keys v+k)
-    (apply #'make-instance 'state keys)))
+    (apply #'make-instance 'product keys)))
+
+(defmethod print-object ((p product) out)
+  (print-unreadable-object (p out :type t)
+    (format out "~a" (name-of p))))
 
 (defgeneric product-add-markets (p &rest markets))
 (defmethod product-add-markets ((p product) &rest markets)
@@ -56,7 +61,7 @@
 (defmacro defproduct (name &rest v+k)
   `(let ((prod (make-product ,@v+k :name ',name)))
      ;; stuff that needs to close over PROD
-     (defun ,(sym-conc name '-add-markets (&rest markets))
+     (defun ,(sym-conc name '-add-markets) (&rest markets)
        (apply #'product-add-markets prod markets))
      ;; and finally inject to environ
      (defvar ,name prod)))
