@@ -363,6 +363,9 @@
   (let ((step (max (get-step s1) (get-step s2))))
     (floor (- (get-unix s1) (get-unix s2)) step)))
 
+(defgeneric consecutivep (thing thing)
+  (:documentation "Whether the second thing follows the first."))
+
 (defmethod consecutivep ((s1 stamp) (s2 stamp))
   "Return non-NIL when there is no further points between S1 and S2."
   (<= (abs (d- s1 s2)) 1))
