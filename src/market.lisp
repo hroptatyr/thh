@@ -34,6 +34,7 @@
 ;; IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (require "package")
+(require "util")
 (in-package :thhrule)
 
 (defclass market ()
