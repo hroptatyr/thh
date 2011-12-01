@@ -288,7 +288,7 @@
 
 
 ;; super macros
-(defmacro defrule-macros (name)
+(defmacro defrule-macros (name &key state)
   ;; convenience macros
   (let* ((defname (sym-conc 'def name))
 	 (defname-rule (if (eql name 'rule)
@@ -299,22 +299,23 @@
 	 (defname/weekly (sym-conc defname '/weekly))
 	 (defname/monthly (sym-conc defname '/monthly))
 	 (defname/quarterly (sym-conc defname '/quarterly))
-	 (defname/yearly (sym-conc defname '/yearly)))
+	 (defname/yearly (sym-conc defname '/yearly))
+	 (state/key (and state (list :state state))))
      `(progn
 	(defmacro ,defname/once (name &rest v+k)
-	  `(defrule/once ,name ,@v+k))
+	  `(defrule/once ,name ,@v+k ,,@state/key))
 	(defmacro ,defname/daily (name &rest v+k)
-	  `(defrule/daily ,name ,@v+k))
+	  `(defrule/daily ,name ,@v+k ,,@state/key))
 	(defmacro ,defname/weekly (name &rest v+k)
-	  `(defrule/weekly ,name ,@v+k))
+	  `(defrule/weekly ,name ,@v+k ,,@state/key))
 	(defmacro ,defname/monthly (name &rest v+k)
-	  `(defrule/monthly ,name ,@v+k))
+	  `(defrule/monthly ,name ,@v+k ,,@state/key))
 	(defmacro ,defname/quarterly (name &rest v+k)
-	  `(defrule/quarterly ,name ,@v+k))
+	  `(defrule/quarterly ,name ,@v+k ,,@state/key))
 	(defmacro ,defname/yearly (name &rest v+k)
-	  `(defrule/yearly ,name ,@v+k))
+	  `(defrule/yearly ,name ,@v+k ,,@state/key))
 	;; lastly define the guy they all refer to
 	(defmacro ,defname-rule (name &rest v+k)
-	  `(defrule ,name ,@v+k)))))
+	  `(defrule ,name ,@v+k ,,@state/key)))))
 
 (provide "rule")

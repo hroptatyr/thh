@@ -80,7 +80,7 @@
 (defmacro defstate (name &rest v+k)
   `(let ((st (make-state ,@v+k :name ',name)))
      ;; convenience
-     (defrule-macros ,name)
+     (defrule-macros ,name :state st)
 
      ;; stuff that needs to close over ST
      (defun ,(sym-conc name '-inhibits) (&rest states)
