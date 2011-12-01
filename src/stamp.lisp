@@ -363,8 +363,8 @@
   (let ((step (max (get-step s1) (get-step s2))))
     (floor (- (get-unix s1) (get-unix s2)) step)))
 
-(defgeneric consecutivep (thing thing)
-  (:documentation "Whether the second thing follows the first."))
+(defgeneric consecutivep (thing1 thing2)
+  (:documentation "Whether THING2 follows THING1."))
 
 (defmethod consecutivep ((s1 stamp) (s2 stamp))
   "Return non-NIL when there is no further points between S1 and S2."
@@ -443,8 +443,8 @@
 (defmethod dt<= ((i1 interval) (i2 interval))
   (not (dt> i1 i2)))
 
-(defgeneric containsp (thing thing)
-  (:documentation "Whether the first thing contains the second."))
+(defgeneric containsp (thing1 thing2)
+  (:documentation "Whether THING1 contains THING2 in some sense"))
 
 (defmethod containsp ((i interval) (s stamp))
   "Return non-NIL when I contains S."
@@ -456,7 +456,7 @@
   (and (containsp i1 (get-interval-start i2))
        (containsp i1 (get-interval-end i2))))
 
-(defgeneric connectedp (thing thing)
+(defgeneric connectedp (thing1 thing2)
   (:documentation "Whether things are connected in some sense."))
 
 (defmethod connectedp ((i interval) (s stamp))
