@@ -60,6 +60,9 @@
 
 (defmacro defproduct (name &rest v+k)
   `(let ((prod (make-product ,@v+k :name ',name)))
+     ;; convenience
+     (defrule-macros ,name)
+
      ;; stuff that needs to close over PROD
      (defun ,(sym-conc name '-add-markets) (&rest markets)
        (apply #'product-add-markets prod markets))

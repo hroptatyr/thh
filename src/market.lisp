@@ -73,6 +73,9 @@
 
 (defmacro defmarket (name &rest v+k)
   `(let ((mkt (make-market ,@v+k :name ',name)))
+     ;; convenience
+     (defrule-macros ,name)
+
      ;; stuff that makes sense in conjunction with state or product
      (defmacro ,(sym-conc 'def name '-product) (name &rest v+k)
        (let ((mkt/prod (sym-conc ',name '/ name)))
