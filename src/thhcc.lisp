@@ -1,7 +1,15 @@
 (require "package")
 (require "thhrule")
 (require "predef")
-(use-package :thhrule)
+(use-package '(:thhrule :stamp))
+
+;; old stuff
+(import 'thhrule::deftrading-hours)
+(import 'thhrule::defholiday/yearly)
+(import 'thhrule::defholiday/monthly)
+(import 'thhrule::defholiday/weekly)
+(import 'thhrule::defholiday/once)
+(import 'thhrule::defholiday)
 
 
 (defun my-command-line ()
@@ -57,7 +65,7 @@
 	and cutoff = (or metro-end (make-stamp :unix 4294967295))
 	and d and s and r and e
 	while (and (multiple-value-setq (d s r e) (next-event rs))
-		   (thhrule::dt< (metronome-of rs) cutoff))
+		   (dt< (metronome-of rs) cutoff))
 	do (format t "~a	~a	~a	~a~%" d s r e))))
   (quit))
 
