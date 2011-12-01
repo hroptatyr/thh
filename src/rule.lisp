@@ -98,6 +98,12 @@
      ;; and finally inject to environ
      (defvar ,name r)))
 
+(unless (fboundp 'push-rule)
+  (defgeneric push-rule (rule thing)))
+(defmethod push-rule (r thing)
+  ;; do nothing
+  (format t "NO-OP #'push-rule ~a called with ~a ~a~%" r thing (type-of thing)))
+
 
 ;; actual functionality
 (defmacro defrule/once (name &key from till on (for 1)
@@ -288,7 +294,7 @@
 
 
 ;; super macros
-(defmacro defrule-macros (name &key state)
+(defmacro defrule-macros (name &key state push-after)
   ;; convenience macros
   (let* ((defname (sym-conc 'def name))
 	 (defname-rule (if (eql name 'rule)
@@ -301,21 +307,35 @@
 	 (defname/quarterly (sym-conc defname '/quarterly))
 	 (defname/yearly (sym-conc defname '/yearly))
 	 (state/key (and state (list :state state))))
-     `(progn
-	(defmacro ,defname/once (name &rest v+k)
-	  `(defrule/once ,name ,@v+k ,,@state/key))
-	(defmacro ,defname/daily (name &rest v+k)
-	  `(defrule/daily ,name ,@v+k ,,@state/key))
-	(defmacro ,defname/weekly (name &rest v+k)
-	  `(defrule/weekly ,name ,@v+k ,,@state/key))
-	(defmacro ,defname/monthly (name &rest v+k)
-	  `(defrule/monthly ,name ,@v+k ,,@state/key))
-	(defmacro ,defname/quarterly (name &rest v+k)
-	  `(defrule/quarterly ,name ,@v+k ,,@state/key))
-	(defmacro ,defname/yearly (name &rest v+k)
-	  `(defrule/yearly ,name ,@v+k ,,@state/key))
-	;; lastly define the guy they all refer to
-	(defmacro ,defname-rule (name &rest v+k)
-	  `(defrule ,name ,@v+k ,,@state/key)))))
+    `(macrolet ((push-after (n) `'(push-rule ,n 'push-after)))
+       (defmacro ,defname/once (name &rest v+k)
+	 `(prog1
+	    (defrule/once ,name ,@v+k ,,@state/key)
+	    (format t "~a~%" ,(push-after ,name))))
+       (defmacro ,defname/daily (name &rest v+k)
+	 `(prog1
+	    (defrule/daily ,name ,@v+k ,,@state/key)
+	    (format t "~a~%" ,(push-after ,name))))
+       (defmacro ,defname/weekly (name &rest v+k)
+	 `(prog1
+	    (defrule/weekly ,name ,@v+k ,,@state/key)
+	    (format t "~a~%" ,(push-after ,name))))
+       (defmacro ,defname/monthly (name &rest v+k)
+	 `(prog1
+	    (defrule/monthly ,name ,@v+k ,,@state/key)
+	    (format t "~a~%" ,(push-after ,name))))
+       (defmacro ,defname/quarterly (name &rest v+k)
+	 `(prog1
+	    (defrule/quarterly ,name ,@v+k ,,@state/key)
+	    (format t "~a~%" ,(push-after ,name))))
+       (defmacro ,defname/yearly (name &rest v+k)
+	 `(prog1
+	    (defrule/yearly ,name ,@v+k ,,@state/key)
+	    (format t "~a~%" ,(push-after ,name))))
+       ;; lastly define the guy they all refer to
+       (defmacro ,defname-rule (name &rest v+k)
+	 `(prog1
+	    (defrule ,name ,@v+k ,,@state/key)
+	    (format t "~a~%" ,(push-after ,name)))))))
 
 (provide "rule")

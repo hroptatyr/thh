@@ -53,7 +53,11 @@
    (states
     :initarg :states
     :initform nil
-    :accessor states-of)))
+    :accessor states-of)
+   (rules
+    :initarg :rules
+    :initform nil
+    :accessor rules-of)))
 
 (defun make-market (&rest v+k)
   (multiple-value-bind (vals keys) (split-vals+keys v+k)
@@ -71,10 +75,18 @@
 (defmethod market-add-products ((m market) &rest products)
   (pushnew-many (products-of m) products))
 
+(defgeneric market-add-rules (m &rest rules))
+(defmethod market-add-rules ((m market) &rest rules)
+  (pushnew-many (rules-of m) rules))
+
+(defmethod push-rule (rule (m market))
+  (market-add-rules m rule))
+
 (defmacro defmarket (name &rest v+k)
-  `(let ((mkt (make-market ,@v+k :name ',name)))
+  `(let ((mkt (make-market ,@v+k :name ',name))
+	 (rules))
      ;; convenience
-     (defrule-macros ,name)
+     (defrule-macros ,name :push-after mkt)
 
      ;; stuff that makes sense in conjunction with state or product
      (defmacro ,(sym-conc 'def name '-product) (name &rest v+k)
@@ -92,6 +104,7 @@
        (apply #'market-add-states mkt states))
      (defun ,(sym-conc name '-add-products) (&rest products)
        (apply #'market-add-products mkt products))
+
      ;; and finally inject to environ
      (defvar ,name mkt)))
 
