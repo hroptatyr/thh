@@ -36,6 +36,7 @@
 (require "package")
 (require "time")
 (require "util")
+(require "timezone")
 (in-package :thhrule)
 
 
