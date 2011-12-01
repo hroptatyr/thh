@@ -23,18 +23,55 @@
    #:make-timezone
    #:utc-stamp->offset))
 
-(defpackage :thhrule
-  (:use
-   #:cl
-   #:cybertiggyr-time
-   #:copy-instance
-   #:local-time)
+(defpackage :stamp
+  (:use #:cl)
   (:export
+   #:stamp
+   #:interval
    #:make-date
    #:make-time
    #:make-datetime
    #:make-stamp
 
+   #:get-unix
+   #:get-year
+   #:get-mon
+   #:get-dom
+   #:get-hour
+   #:get-min
+   #:get-sec
+
+   #:get-dow/num
+   #:get-dow/sym
+   #:get-mon/num
+   #:get-mon/sym
+
+   #:make-interval
+
+   #:d+
+   #:d-
+   #:d>
+   #:d<
+   #:d=
+   #:d<=
+   #:d>=
+
+   #:dt=
+   #:dt<
+   #:dt>
+   #:dt<=
+   #:dt>=
+
+   #:i=))
+
+(defpackage :thhrule
+  (:use
+   #:cl
+   #:cybertiggyr-time
+   #:copy-instance
+   #:local-time
+   #:stamp)
+  (:export
    #:defrule
    #:defrule/once
    #:defrule/daily

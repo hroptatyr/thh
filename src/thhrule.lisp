@@ -34,10 +34,11 @@
 ;; IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (require "package")
-(require "util")
+(require "stamp")
 (require "time")
 (require "copy-instance")
 (require "timezone")
+(require "util")
 (require "rule")
 (in-package :thhrule)
 

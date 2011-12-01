@@ -1,7 +1,7 @@
 (require "package")
 (require "thhrule")
 (require "predef")
-(use-package :thhrule)
+(use-package '(:thhrule :stamp))
 
 ;; old stuff
 (import 'thhrule::deftrading-hours)

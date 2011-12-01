@@ -12,8 +12,9 @@ AM_LDFLAGS =
 libexec_PROGRAMS += thhcc.bin
 thhcc_bin_SOURCES =
 thhcc_bin_SOURCES += package.lisp
-thhcc_bin_SOURCES += util.lisp
+thhcc_bin_SOURCES += stamp.lisp
 thhcc_bin_SOURCES += time.lisp
+thhcc_bin_SOURCES += util.lisp
 thhcc_bin_SOURCES += predef.lisp
 thhcc_bin_SOURCES += timezone.lisp
 thhcc_bin_SOURCES += copy-instance.lisp
@@ -31,17 +32,19 @@ thhcc_CPPFLAGS = $(AM_CPPFLAGS) -DLIBEXECDIR=\"$(libexecdir)\"
 thhcc_LDFLAGS = $(AM_LDFLAGS)
 BUILT_SOURCES += thhcc-clo.c thhcc-clo.h
 
-util.o: package.o
+stamp.o: package.o
 time.o: package.o
 timezone.o: package.o
 copy-instance.o: package.o
+util.o: package.o stamp.o
 predef.o: package.o util.o
 state.o: package.o util.o
 rule.o: package.o util.o
 product.o: package.o util.o
 market.o: package.o util.o timezone.o
-thhrule.o: package.o util.o time.o timezone.o copy-instance.o \
-	market.o product.o state.o rule.o
+thhrule.o: package.o stamp.o time.o timezone.o copy-instance.o \
+	util.o state.o rule.o \
+	market.o product.o
 thhcc.o: package.o thhrule.o predef.o
 
 
