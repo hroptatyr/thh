@@ -62,7 +62,7 @@
     (apply #'make-instance 'state keys)))
 
 (defmethod print-object ((s state) out)
-  (print-unreadable-object (r out :type t)
+  (print-unreadable-object (s out :type t)
     (format out "~a" (name-of s))))
 
 (defgeneric state-inhibits (s &rest states))
