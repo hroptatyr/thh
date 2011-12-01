@@ -46,6 +46,7 @@
    #:get-dow/num
    #:get-dow/sym
 
+   #:interval
    #:make-interval
    #:get-interval-start
    #:get-interval-end

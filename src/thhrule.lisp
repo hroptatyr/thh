@@ -85,19 +85,40 @@
   `(defvar ,name ,doc))
 
 
+(defgeneric get-start (thing))
+(defgeneric get-end (thing))
+(defgeneric get-length (thing))
+
+(defmethod get-start ((i interval))
+  (get-interval-start i))
+
 (defmethod get-start ((r rule))
   (with-slots (next) r
-    (get-interval-start next)))
+    (get-start next)))
 
 (defmethod get-start ((r (eql nil)))
   nil)
 
+(defmethod get-end ((i interval))
+  (get-interval-end i))
+
 (defmethod get-end ((r rule))
   (with-slots (next) r
-    (get-interval-end next)))
+    (get-end next)))
 
 (defmethod get-end ((r (eql nil)))
   nil)
+
+(defmethod get-length ((i interval))
+  (get-interval-length i))
+
+(defmethod get-length ((r rule))
+  (with-slots (next) r
+    (get-end next)))
+
+(defmethod get-length ((r (eql nil)))
+  nil)
+
 
 ;; aux methods, eql specialisers
 (defmethod dt> ((i1 interval) (i2 (eql nil)))
@@ -240,7 +261,7 @@
 	   ((dt> metronome till)
 	    nil)
 	   ((and (slot-boundp r 'next)
-		 (or (null next) (dt>= (get-interval-start next) metronome)))
+		 (or (null next) (dt>= (get-start next) metronome)))
 	    next)
 	   ((and (slot-boundp r 'next-lambda)
 		 (functionp next-lambda))
@@ -296,9 +317,9 @@
   (with-slots ((mover-next next)) mover
     (let ((eo-mover (midnight (get-end mover-next) 0)))
       (with-slots ((movee-next next)) movee
-	(let ((length (get-interval-length movee-next))
+	(let ((length (get-length movee-next))
 	      (new-start (make-stamp
-			  :what (type-of (get-interval-start movee-next))
+			  :what (type-of (get-start movee-next))
 			  :unix eo-mover)))
 	  (setf movee-next
 		(make-interval :start new-start :length length)))))))
@@ -343,10 +364,10 @@
       (let ((cand
 	     (find-if #'(lambda (a)
 			  (with-slots ((anext next) (astate state-start)) a
-			    (let ((astart (get-interval-start anext))
-				  (aend (get-interval-end anext))
-				  (rstart (get-interval-start rnext))
-				  (rend (get-interval-end rnext)))
+			    (let ((astart (get-start anext))
+				  (aend (get-end anext))
+				  (rstart (get-start rnext))
+				  (rend (get-end rnext)))
 			      (and astart
 				   (dt> astart rstart)
 				   (dt<= astart rend)
@@ -355,7 +376,7 @@
 		      rules)))
 	(if cand
 	    (values (get-start cand) (get-start-state cand) cand)
-	  (values (get-interval-end rnext) (get-end-state r) r))))))
+	  (values (get-end rnext) (get-end-state r) r))))))
 
 (defmethod metro-round ((rs ruleset))
   (with-slots (metronome state rules) rs
@@ -382,7 +403,7 @@
 		   (error "state inconsistent ~a < ~a" stamp metronome))))
 	unless (eql state '+market-last+)
 	return (values metronome state rule
-		       (get-interval-end (slot-value rule 'next)))))))
+		       (get-end (slot-value rule 'next)))))))
 
 (provide :thhrule)
 (provide "thhrule")
