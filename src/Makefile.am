@@ -39,7 +39,7 @@ copy-instance.o: package.o
 util.o: package.o stamp.o
 predef.o: package.o util.o
 state.o: package.o util.o
-rule.o: package.o timezone time.o util.o
+rule.o: package.o timezone.o time.o util.o
 product.o: package.o util.o
 market.o: package.o util.o timezone.o
 thhrule.o: package.o stamp.o time.o timezone.o copy-instance.o \
