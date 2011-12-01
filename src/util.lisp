@@ -179,7 +179,9 @@
 			  (3rd 3)
 			  (4th 4)
 			  (last 5)
-			  (otherwise 0))))))
+			  (otherwise 0))))
+		     (t
+		      0)))
 	 (dom (+ (mod (- (+ dow/num 7) sdow) 7) 1 (* 7 (1- which/num))))
 	 (ult (get-mdays year mon)))
     (make-date :year year
