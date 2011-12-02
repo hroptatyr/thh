@@ -79,14 +79,15 @@
 (defmethod market-add-rules ((m market) &rest rules)
   (pushnew-many (rules-of m) rules))
 
-(defmethod push-rule (rule (m market))
-  (market-add-rules m rule))
-
 (defmacro defmarket (name &rest v+k)
   `(let ((mkt (make-market ,@v+k :name ',name))
 	 (rules))
+
      ;; convenience
-     (defrule-macros ,name :push-after mkt)
+     (flet ((push-rule (r)
+	      (market-add-rules mkt r)))
+       (declare (special push-rule))
+       (defrule-macros ,name))
 
      ;; stuff that makes sense in conjunction with state or product
      (defmacro ,(sym-conc 'def name '-product) (name &rest v+k)
