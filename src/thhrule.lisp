@@ -79,7 +79,7 @@
 
 ;; sessions and timezones and other auxiliary stuff
 (defmacro deftimezone (name value &optional doc)
-  `(defparameter ,name ,(make-timezone :path value) ,doc))
+  `(defparameter ,name (make-timezone :path ,value) ,doc))
 
 (defmacro defsession (name &optional doc)
   `(defvar ,name ,doc))

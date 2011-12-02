@@ -23,6 +23,17 @@
    #:make-timezone
    #:utc-stamp->offset))
 
+(defpackage :it.bese.arnesi
+  (:use
+   #:cl
+   #+sbcl #:sb-mop
+   #+clisp #:clos)
+  (:export
+   #:lexical-variables
+   #:lexical-functions
+   #:lexical-macros
+   #:lexical-symbol-macros))
+
 (defpackage :stamp
   (:use #:cl)
   (:export
@@ -74,7 +85,8 @@
    #:cybertiggyr-time
    #:copy-instance
    #:local-time
-   #:stamp)
+   #:stamp
+   #:it.bese.arnesi)
   (:export
    #:defrule
    #:defrule/once

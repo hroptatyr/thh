@@ -85,8 +85,9 @@
 
      ;; convenience
      (flet ((push-rule (r)
-	      (market-add-rules mkt r)))
-       (declare (special push-rule))
+	      (format t "the actual one~%"))
+	    (bla (test)
+	      (format t "just to test")))
        (defrule-macros ,name))
 
      ;; stuff that makes sense in conjunction with state or product

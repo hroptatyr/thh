@@ -292,7 +292,7 @@
   ;; do nothing
   (format t "NO-OP #'push-rule called with ~a~%" r))
 
-(defmacro defrule-macros (name &key state)
+(defmacro defrule-macros (name &key state &environment env)
   ;; convenience macros
   (let* ((defname (sym-conc 'def name))
 	 (defname-rule (if (eql name 'rule)
@@ -305,6 +305,7 @@
 	 (defname/quarterly (sym-conc defname '/quarterly))
 	 (defname/yearly (sym-conc defname '/yearly))
 	 (state/key (and state (list :state state))))
+
     `(progn
        (defmacro ,defname/once (name &rest v+k)
 	 `(prog1
@@ -314,10 +315,11 @@
 	 `(prog1
 	    (defrule/daily ,name ,@v+k ,,@state/key)
 	    (push-rule ,name)))
-       (defmacro ,defname/weekly (name &rest v+k &environment env)
-	 `(prog1
-	    (defrule/weekly ,name ,@v+k ,,@state/key)
-	    (push-rule ,,name)))
+       (defmacro ,defname/weekly (name &rest v+k)
+	 `(with-lexenv-funs (push-rule) ,,env
+	    (prog1
+		(defrule/weekly ,name ,@v+k ,,@state/key)
+	      (push-rule ,name))))
        (defmacro ,defname/monthly (name &rest v+k)
 	 `(prog1
 	    (defrule/monthly ,name ,@v+k ,,@state/key)
