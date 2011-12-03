@@ -288,11 +288,12 @@
 
 
 ;; super macros and funs
-(defun push-rule (r)
+(defgeneric push-rule (thing rule))
+(defmethod push-rule (thing (r rule))
   ;; do nothing
-  (format t "NO-OP #'push-rule called with ~a~%" r))
+  (format t "NO-OP #'push-rule called with ~a pusing onto ~a~%" r thing))
 
-(defmacro defrule-macros (name &key state &environment env)
+(defmacro defrule-macros (name &key state push-obj)
   ;; convenience macros
   (let* ((defname (sym-conc 'def name))
 	 (defname-rule (if (eql name 'rule)
@@ -309,33 +310,32 @@
     `(progn
        (defmacro ,defname/once (name &rest v+k)
 	 `(prog1
-	    (defrule/once ,name ,@v+k ,,@state/key)
-	    (push-rule ,name)))
+	      (defrule/once ,name ,@v+k ,,@state/key)
+	    (push-rule ,,push-obj ,name)))
        (defmacro ,defname/daily (name &rest v+k)
 	 `(prog1
-	    (defrule/daily ,name ,@v+k ,,@state/key)
-	    (push-rule ,name)))
+	      (defrule/daily ,name ,@v+k ,,@state/key)
+	    (push-rule ,,push-obj ,name)))
        (defmacro ,defname/weekly (name &rest v+k)
-	 `(with-lexenv-funs (push-rule) ,,env
-	    (prog1
-		(defrule/weekly ,name ,@v+k ,,@state/key)
-	      (push-rule ,name))))
+	 `(prog1
+	      (defrule/weekly ,name ,@v+k ,,@state/key)
+	    (push-rule ,,push-obj ,name)))
        (defmacro ,defname/monthly (name &rest v+k)
 	 `(prog1
-	    (defrule/monthly ,name ,@v+k ,,@state/key)
-	    (push-rule ,name)))
+	      (defrule/monthly ,name ,@v+k ,,@state/key)
+	    (push-rule ,,push-obj ,name)))
        (defmacro ,defname/quarterly (name &rest v+k)
 	 `(prog1
-	    (defrule/quarterly ,name ,@v+k ,,@state/key)
-	    (push-rule ,name)))
+	      (defrule/quarterly ,name ,@v+k ,,@state/key)
+	    (push-rule ,,push-obj ,name)))
        (defmacro ,defname/yearly (name &rest v+k)
 	 `(prog1
-	    (defrule/yearly ,name ,@v+k ,,@state/key)
-	    (push-rule ,name)))
+	      (defrule/yearly ,name ,@v+k ,,@state/key)
+	    (push-rule ,,push-obj ,name)))
        ;; lastly define the guy they all refer to
        (defmacro ,defname-rule (name &rest v+k)
 	 `(prog1
-	    (defrule ,name ,@v+k ,,@state/key)
-	    (push-rule ,name))))))
+	      (defrule ,name ,@v+k ,,@state/key)
+	    (push-rule ,,push-obj ,name))))))
 
 (provide "rule")
