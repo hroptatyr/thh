@@ -44,7 +44,11 @@
    (markets
     :initarg :markets
     :initform nil
-    :accessor markets-of)))
+    :accessor markets-of)
+   (rules
+    :initarg :rules
+    :initform nil
+    :accessor rules-of)))
 
 (defun make-product (&rest v+k)
   (multiple-value-bind (vals keys) (split-vals+keys v+k)
@@ -58,10 +62,17 @@
 (defmethod product-add-markets ((p product) &rest markets)
   (pushnew-many (markets-of p) markets))
 
+(defgeneric product-add-rules (p &rest rules))
+(defmethod product-add-rules ((p product) &rest rules)
+  (pushnew-many (rules-of p) rules))
+
+(defmethod push-rule ((p product) r)
+  (product-add-rules p r))
+
 (defmacro defproduct (name &rest v+k)
   `(let ((prod (make-product ,@v+k :name ',name)))
      ;; convenience
-     (defrule-macros ,name)
+     (defrule-macros ,name :push-obj prod)
 
      ;; stuff that needs to close over PROD
      (defun ,(sym-conc name '-add-markets) (&rest markets)

@@ -46,6 +46,11 @@
     :initform nil
     :accessor markets-of
     :type (list market))
+   (rules
+    :initarg :rules
+    :initform nil
+    :accessor rules-of
+    :type (list rule))
    (implies
     :initarg :implies
     :initform nil
@@ -77,10 +82,13 @@
 (defmethod state-add-markets ((s state) &rest markets)
   (pushnew-many (markets-of s) markets))
 
+(defmethod push-rule ((s state) r)
+  (pushnew-many (rules-of s) (list r)))
+
 (defmacro defstate (name &rest v+k)
   `(let ((st (make-state ,@v+k :name ',name)))
      ;; convenience
-     (defrule-macros ,name :state st)
+     (defrule-macros ,name :state st :push-obj st)
 
      ;; stuff that needs to close over ST
      (defun ,(sym-conc name '-inhibits) (&rest states)
