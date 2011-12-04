@@ -41,8 +41,19 @@
 (in-package :thhrule)
 
 
+;; recurring events class
+(defclass recrev ()
+  (;; stream closure, takes stamp and returns the next occurrence
+   (next-lambda
+    :initarg :next-lambda
+    :type function)
+   (next
+    :initarg :next
+    :accessor next-of
+    :type stamp)))
+
 ;; rule class
-(defclass rule ()
+(defclass rule (recrev)
   (
    ;; validity forms first
    (from
@@ -53,14 +64,6 @@
     :initarg :till
     :accessor valid-till-of
     :initform +dusk-of-time+)
-   ;; stream closure, takes stamp and returns the next occurrence
-   (next-lambda
-    :initarg :next-lambda
-    :type function)
-   (next
-    :initarg :next
-    :accessor next-of
-    :type stamp)
    (state
     :initarg :state
     :initform nil
