@@ -46,6 +46,8 @@
   (;; stream closure, takes stamp and returns the next occurrence
    (next-lambda
     :initarg :next-lambda
+    :initform nil
+    :accessor lambda-of
     :type function)
    (next
     :initarg :next
@@ -351,11 +353,11 @@
 
 (defmethod next-state-flip ((r rule) (s stamp))
   (let ((s (max-stamp s (valid-from-of r))))
-    (with-slots (next-lambda) r
-      (when (or (not (slot-boundp r 'next))
-		(dt>= s (get-interval-end (next-of r))))
-	(setf (next-of r)
-	      (funcall next-lambda s))))
+    (when (and (or (not (slot-boundp r 'next))
+		   (dt>= s (get-interval-end (next-of r))))
+	       (lambda-of r))
+      (setf (next-of r)
+	    (funcall (lambda-of r) s)))
 
     (let ((res
 	   (cond
