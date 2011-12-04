@@ -12,11 +12,17 @@ AM_LDFLAGS =
 libexec_PROGRAMS += thhcc.bin
 thhcc_bin_SOURCES =
 thhcc_bin_SOURCES += package.lisp
-thhcc_bin_SOURCES += util.lisp
+thhcc_bin_SOURCES += stamp.lisp
 thhcc_bin_SOURCES += time.lisp
+thhcc_bin_SOURCES += util.lisp
 thhcc_bin_SOURCES += predef.lisp
 thhcc_bin_SOURCES += timezone.lisp
 thhcc_bin_SOURCES += copy-instance.lisp
+thhcc_bin_SOURCES += lexenv.lisp
+thhcc_bin_SOURCES += rule.lisp
+thhcc_bin_SOURCES += market.lisp
+thhcc_bin_SOURCES += product.lisp
+thhcc_bin_SOURCES += state.lisp
 thhcc_bin_SOURCES += thhrule.lisp
 thhcc_bin_SOURCES += thhcc.lisp
 thhcc_bin_LINK = $(CL_LINK)
@@ -27,13 +33,22 @@ thhcc_CPPFLAGS = $(AM_CPPFLAGS) -DLIBEXECDIR=\"$(libexecdir)\"
 thhcc_LDFLAGS = $(AM_LDFLAGS)
 BUILT_SOURCES += thhcc-clo.c thhcc-clo.h
 
-util.fas: package.lisp
-time.fas: package.lisp
-timezone.fas: package.lisp
-copy-instance.fas: package.lisp
-predef.fas: package.lisp util.lisp
-thhrule.fas: package.lisp util.lisp time.lisp timezone.lisp copy-instance.lisp
-thhcc.fas: package.lisp thhrule.lisp predef.lisp
+stamp.o: package.o
+time.o: package.o
+timezone.o: package.o
+copy-instance.o: package.o
+lexenv.o: package.o
+util.o: package.o stamp.o
+predef.o: package.o util.o
+state.o: package.o util.o
+rule.o: package.o timezone.o time.o util.o
+product.o: package.o util.o
+market.o: package.o util.o timezone.o
+thhrule.o: package.o stamp.o time.o timezone.o copy-instance.o \
+	util.o state.o rule.o \
+	market.o product.o
+thhcc.o: package.o thhrule.o predef.o
+
 
 .lisp.o:
 	$(CL_COMPILE) $< $@
