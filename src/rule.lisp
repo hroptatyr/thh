@@ -34,6 +34,7 @@
 ;; IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (require "package")
+(require "stamp")
 (require "time")
 (require "util")
 (require "timezone")
@@ -46,9 +47,11 @@
    ;; validity forms first
    (from
     :initarg :from
+    :accessor valid-from-of
     :initform +dawn-of-time+)
    (till
     :initarg :till
+    :accessor valid-till-of
     :initform +dusk-of-time+)
    ;; stream closure, takes stamp and returns the next occurrence
    (next-lambda
@@ -56,6 +59,7 @@
     :type function)
    (next
     :initarg :next
+    :accessor next-of
     :type stamp)
    (state
     :initarg :state
@@ -337,5 +341,24 @@
 	 `(prog1
 	      (defrule ,name ,@v+k ,,@state/key)
 	    (push-rule ,,push-obj ,name))))))
+
+
+;; functionality on rules
+(defgeneric next-state-flip (r stamp))
+
+(defmethod next-state-flip ((r rule) (s stamp))
+  (let ((s (max-stamp s (valid-from-of r))))
+    (with-slots (next-lambda) r
+      (when (or (not (slot-boundp r 'next))
+		(dt>= s (get-interval-end (next-of r))))
+	(setf (next-of r)
+	      (funcall next-lambda s))))
+    (cond
+     ((null (next-of r))
+      nil)
+     ((dt> s (get-interval-start (next-of r)))
+      (get-interval-end (next-of r)))
+     (t
+      (get-interval-start (next-of r))))))
 
 (provide "rule")
