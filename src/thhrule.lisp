@@ -255,19 +255,7 @@
 
 
 (defmethod next-event/rule ((metronome stamp) (r rule))
-  (with-slots (till next next-lambda) r
-    (setf next
-	  (cond
-	   ((dt> metronome till)
-	    nil)
-	   ((and (slot-boundp r 'next)
-		 (or (null next) (dt>= (get-start next) metronome)))
-	    next)
-	   ((and (slot-boundp r 'next-lambda)
-		 (functionp next-lambda))
-	    (funcall next-lambda metronome))
-	   (t
-	    nil)))))
+  (next-state-flip r metronome))
 
 
 ;; rulesets

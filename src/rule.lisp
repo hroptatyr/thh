@@ -353,12 +353,17 @@
 		(dt>= s (get-interval-end (next-of r))))
 	(setf (next-of r)
 	      (funcall next-lambda s))))
-    (cond
-     ((null (next-of r))
-      nil)
-     ((dt> s (get-interval-start (next-of r)))
-      (get-interval-end (next-of r)))
-     (t
-      (get-interval-start (next-of r))))))
+
+    (let ((res
+	   (cond
+	    ((null (next-of r))
+	     nil)
+	    ((dt> s (get-interval-start (next-of r)))
+	     (get-interval-end (next-of r)))
+	    (t
+	     (get-interval-start (next-of r))))))
+      ;; inspect res once more, could be after valid-till-of
+      (unless (dt> res (valid-till-of r))
+	res))))
 
 (provide "rule")
