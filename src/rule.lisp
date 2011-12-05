@@ -51,49 +51,64 @@
     :type function)
    (next
     :initarg :next
+    :initform nil
     :accessor next-of
     :type stamp)))
 
+;; validity class
+(defclass validity ()
+  ((validity
+    :initarg :validity
+    :accessor validity-of
+    ;; nil means never valid, t means always valid
+    :initform nil
+    :type interval)))
+
 ;; rule class
-(defclass rule (recrev)
-  (
-   ;; validity forms first
-   (from
-    :initarg :from
-    :accessor valid-from-of
-    :initform +dawn-of-time+)
-   (till
-    :initarg :till
-    :accessor valid-till-of
-    :initform +dusk-of-time+)
+(defclass rule (recrev validity)
+  ((name
+    :initarg :name
+    :accessor name-of)
    (state
     :initarg :state
     :initform nil
     :accessor state-of
     :type state)
-   (state-start
-    :initarg :state-start
-    :reader get-start-state
-    :type state)
-   (state-end
-    :initarg :state-end
-    :reader get-end-state
-    :type state)
    (timezone
     :initarg :timezone
-    :accessor timezone-of)
-   (in-lieu
-    :initform nil
-    :reader in-lieu-of
-    :initarg :in-lieu)
-   (name
-    :initarg :name
-    :accessor name-of
-    :reader get-name)))
+    :accessor timezone-of)))
+
+(defun %validity-ctor (&key from till validity &allow-other-keys)
+  (or validity
+      (let ((st (or from +dawn-of-time+))
+	    (en (or till +dusk-of-time+)))
+	(make-interval :start st :end en))))
+
+(defun make-recrev (&rest v+k)
+  (multiple-value-bind (vals keys) (split-vals+keys v+k)
+    (declare (ignore vals))
+    (destructuring-bind (&key next next-lambda &allow-other-keys) keys
+      (make-instance 'recrev :next next :next-lambda next-lambda))))
+
+(defun make-validity (&rest v+k)
+  (multiple-value-bind (vals keys) (split-vals+keys v+k)
+    (declare (ignore vals))
+    (let ((v (apply #'%validity-ctor keys)))
+      (make-instance 'validity :validity v))))
 
 (defun make-rule (&rest v+k)
   (multiple-value-bind (vals keys) (split-vals+keys v+k)
-    (apply #'make-instance 'rule keys)))
+    (declare (ignore vals))
+    (let ((v (apply #'%validity-ctor keys)))
+      (apply #'make-instance 'rule :validity v :allow-other-keys t keys))))
+
+(defmethod print-object ((r recrev) out)
+  (print-unreadable-object (r out :type t)
+    (format out "~a" (lambda-of r))))
+
+(defmethod print-object ((v validity) out)
+  (print-unreadable-object (v out :type t)
+    (format out "~a" (validity-of v))))
 
 (defmethod print-object ((r rule) out)
   (print-unreadable-object (r out :type t)
@@ -352,9 +367,12 @@
 (defgeneric next-state-flip (r stamp))
 
 (defmethod next-state-flip ((r rule) (s stamp))
-  (let ((s (max-stamp s (valid-from-of r))))
+  (let* ((v (validity-of r))
+	 (vst (start-of v))
+	 (ven (end-of v))
+	 (s (max-stamp s vst)))
     (when (and (or (not (slot-boundp r 'next))
-		   (dt>= s (get-interval-end (next-of r))))
+		   (dt>= s (end-of (next-of r))))
 	       (lambda-of r))
       (setf (next-of r)
 	    (funcall (lambda-of r) s)))
@@ -363,12 +381,12 @@
 	   (cond
 	    ((null (next-of r))
 	     nil)
-	    ((dt> s (get-interval-start (next-of r)))
-	     (get-interval-end (next-of r)))
+	    ((dt> s (start-of (next-of r)))
+	     (end-of (next-of r)))
 	    (t
-	     (get-interval-start (next-of r))))))
+	     (start-of (next-of r))))))
       ;; inspect res once more, could be after valid-till-of
-      (unless (dt> res (valid-till-of r))
+      (unless (dt> res ven)
 	res))))
 
 (provide "rule")

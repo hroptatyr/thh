@@ -59,9 +59,9 @@
 
    #:interval
    #:make-interval
-   #:get-interval-start
-   #:get-interval-end
-   #:get-interval-length
+   #:start-of
+   #:end-of
+   #:length-of
 
    #:d+
    #:d-

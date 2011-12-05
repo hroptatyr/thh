@@ -90,7 +90,7 @@
 (defgeneric get-length (thing))
 
 (defmethod get-start ((i interval))
-  (get-interval-start i))
+  (start-of i))
 
 (defmethod get-start ((r rule))
   (with-slots (next) r
@@ -100,7 +100,7 @@
   nil)
 
 (defmethod get-end ((i interval))
-  (get-interval-end i))
+  (end-of i))
 
 (defmethod get-end ((r rule))
   (with-slots (next) r
@@ -110,7 +110,7 @@
   nil)
 
 (defmethod get-length ((i interval))
-  (get-interval-length i))
+  (length-of i))
 
 (defmethod get-length ((r rule))
   (with-slots (next) r
