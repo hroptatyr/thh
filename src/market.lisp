@@ -34,38 +34,26 @@
 ;; IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (require "package")
-(require "timezone")
 (require "util")
+(require "family")
 (in-package :thhrule)
 
-(defclass market ()
-  ((name
-    :initarg :name
-    :accessor name-of)
-   (timezone
-    :initarg :timezone
-    :initform local-time::+utc-zone+
-    :accessor timezone-of)
-   (products
+(defclass market (family)
+  ((products
     :initarg :products
     :initform nil
     :accessor products-of)
    (states
     :initarg :states
     :initform nil
-    :accessor states-of)
-   (rules
-    :initarg :rules
-    :initform nil
-    :accessor rules-of)))
+    :accessor states-of)))
 
 (defun make-market (&rest v+k)
   (multiple-value-bind (vals keys) (split-vals+keys v+k)
-    (apply #'make-instance 'market keys)))
+    (declare (ignore vals))
+    (apply #'make-instance 'market :allow-other-keys t keys)))
 
-(defmethod print-object ((m market) out)
-  (print-unreadable-object (m out :type t)
-    (format out "~a" (name-of m))))
+;; no print-object method, fall back to family printer
 
 (defgeneric market-add-states (m &rest states))
 (defmethod market-add-states ((m market) &rest states)

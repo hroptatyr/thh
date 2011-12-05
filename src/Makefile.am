@@ -20,6 +20,7 @@ thhcc_bin_SOURCES += timezone.lisp
 thhcc_bin_SOURCES += copy-instance.lisp
 thhcc_bin_SOURCES += lexenv.lisp
 thhcc_bin_SOURCES += rule.lisp
+thhcc_bin_SOURCES += family.lisp
 thhcc_bin_SOURCES += market.lisp
 thhcc_bin_SOURCES += product.lisp
 thhcc_bin_SOURCES += state.lisp
@@ -42,6 +43,7 @@ util.o: package.o stamp.o
 predef.o: package.o util.o
 state.o: package.o util.o
 rule.o: package.o timezone.o time.o util.o
+family.o: package.o rule.o
 product.o: package.o util.o
 market.o: package.o util.o timezone.o
 thhrule.o: package.o stamp.o time.o timezone.o copy-instance.o \
