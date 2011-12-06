@@ -11,6 +11,9 @@
 (import 'thhrule::defholiday/once)
 (import 'thhrule::defholiday)
 
+;; family stuff that isn't exported
+(import 'thhrule::set-metronome)
+
 
 (defun my-command-line ()
   (or 
@@ -19,6 +22,29 @@
    #+cmu extensions:*command-line-words*
    #+gcl si:*command-args*
    nil))
+
+(defgeneric real-work (thing &key &allow-other-keys))
+
+(defmethod real-work ((rs thhrule::ruleset) &key metro-sta metro-end)
+  (setf (metronome-of rs) metro-sta)
+  (loop
+    with cutoff = (or metro-end (make-stamp :unix 4294967295))
+    and d and s and r and e
+    while (and (multiple-value-setq (d s r e) (next-event rs))
+	       (dt< (metronome-of rs) cutoff))
+    do (format t "~a	~a	~a	~a~%" d s r e)))
+
+(defmethod real-work ((rs thhrule::family) &key metro-sta metro-end)
+  (set-metronome metro-sta)
+  (loop
+    with cutoff = (or metro-end (make-stamp :unix 4294967295))
+    and d and s and r and e
+    while (and (multiple-value-setq (d s r e) (next-event rs))
+	       (dt< (metronome-of rs) cutoff))
+    do (format t "~a	~a	~a	~a~%" d s r e)))
+
+(defmethod real-work ((thing t) &key &allow-other-keys)
+  (error "family ~a is not iterable" thing))
 
 (defun main ()
   ;; ./thhcc FILE RULESET
@@ -51,22 +77,10 @@
 	(quit))
 
       ;; assign ruleset
-      (and (setq ruleset (symbol-value ruleset/sym))
-	   metro-sta
-	   (setf (metronome-of ruleset) metro-sta))
+      (setq ruleset (symbol-value ruleset/sym))
 
       ;; real work now
-      (unless (and ruleset (eql (type-of ruleset) 'thhrule::ruleset))
-	(error "ruleset ~a is not a ruleset instance" ruleset/str)
-	(quit))
-
-      (loop
-	with rs = ruleset
-	and cutoff = (or metro-end (make-stamp :unix 4294967295))
-	and d and s and r and e
-	while (and (multiple-value-setq (d s r e) (next-event rs))
-		   (dt< (metronome-of rs) cutoff))
-	do (format t "~a	~a	~a	~a~%" d s r e))))
+      (real-work ruleset :metro-sta metro-sta :metro-end metro-end)))
   (quit))
 
 #+sbcl
