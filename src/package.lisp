@@ -86,7 +86,9 @@
    #:copy-instance
    #:local-time
    #:stamp
-   #:it.bese.arnesi)
+   #:it.bese.arnesi
+   #+sbcl #:sb-mop
+   #+clisp #:clos)
   (:export
    #:defrule
    #:defrule/once

@@ -80,6 +80,17 @@
     :accessor state-of
     :type state)))
 
+(defun promote-class (thing &key from to)
+  (let* ((clof (class-of thing))
+	 (tyof (type-of thing))
+	 ;; check if we are a TO already
+	 (demote? (subtypep tyof to)))
+    (if demote?
+	thing
+      (let ((dyna (sym-conc (class-name clof) '/iter)))
+	(ensure-class dyna :direct-superclasses (list clof to))
+	(change-class thing dyna)))))
+
 (defun make-famiter (&rest v+k)
   (multiple-value-bind (vals keys) (split-vals+keys v+k)
     (let ((old (or (and (subtypep (type-of (car vals)) 'family)
@@ -87,10 +98,7 @@
 		   (destructuring-bind (&key family &allow-other-keys) keys
 		     family))))
       (if old
-	  (let* ((cof-old (class-of old))
-		 (dyna (sym-conc (class-name cof-old) '/iter)))
-	    (ensure-class dyna :direct-superclasses '(cof-old famiter))
-	    (change-class old dyna))
+	  (promote-class old :from 'family :to 'famiter)
 	(apply #'make-instance 'famiter :allow-other-keys t keys)))))
 
 (defmethod print-object ((f famiter) out)
