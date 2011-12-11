@@ -85,17 +85,54 @@
     :accessor family-of
     :type family)))
 
+(defun compute-initial-metronome (f)
+  ;; for now we just come up with a number
+  (declare (ignore f))
+  (make-date :year 1999 :mon 1 :dom 1))
+
 (defun make-famiter (&rest v+k)
   (multiple-value-bind (vals keys) (split-vals+keys v+k)
-    (let ((old (or (and (subtypep (type-of (car vals)) 'family)
-			(car vals))
-		   (destructuring-bind (&key family &allow-other-keys) keys
-		     family))))
-      (make-instance 'famiter :family old))))
+    (let* ((old (or (and (subtypep (type-of (car vals)) 'family)
+			 (car vals))
+		    (destructuring-bind (&key family &allow-other-keys) keys
+		      family)))
+	   (sta (compute-initial-metronome old)))
+      (make-instance 'famiter :family old :metronome sta))))
 
 (defmethod print-object ((f famiter) out)
   (print-unreadable-object (f out :type t)
     (format out "~a @~a :state ~a"
 	    (name-of (family-of f)) (metronome-of f) (state-of f))))
+
+(defgeneric next-event (thing))
+(defgeneric metro-round (thing))
+
+(defmethod metro-round ((fi famiter))
+  ;; stable-sort needs #'setf'ing under sbcl
+  (let ((f (family-of fi)))
+    (setf (rules-of f)
+	  (sort (rules-of f) #'(lambda (a b)
+				 (metro-sort (metronome-of fi) a b))))
+    ;; pick a rule
+    (pick-next (rules-of f))))
+
+(defmethod next-event ((fi famiter))
+  (multiple-value-bind (stamp newst newru rule) (metro-round fi)
+    (declare (ignore newru))
+    (loop
+      when (null (metronome-of fi))
+      return nil
+      do (setf (values (metronome-of fi) (state-of fi) rule)
+	       (cond
+		((or (not (eql newst (state-of fi)))
+		     (dt> stamp (metronome-of fi)))
+		 (metro-round fi))
+		((dt= stamp (metronome-of fi))
+		 (metro-next fi rule))
+		(t
+		 (error "state inconsistent ~a < ~a" stamp (metronome-of fi)))))
+      unless (null (state-of fi))
+      return (values (metronome-of fi) (state-of fi) rule
+		     (get-end (slot-value rule 'next))))))
 
 (provide "family")

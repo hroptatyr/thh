@@ -393,41 +393,6 @@
 	return (values metronome state rule
 		       (get-end (slot-value rule 'next)))))))
 
-;; family based events
-(let (state metronome)
-
-  (defmethod set-metronome ((s stamp))
-    (setf metronome s))
-
-  (defmethod set-metronome ((s (eql nil)))
-    (setf metronome (parse-dtall "2000-01-01")))
-
-  (defmethod metro-round ((rs family))
-    ;; stable-sort needs #'setf'ing under sbcl
-    (setf (rules-of rs)
-	  (sort (rules-of rs) #'(lambda (a b) (metro-sort metronome a b))))
-    ;; pick a rule
-    (pick-next (rules-of rs)))
-
-  (defmethod next-event ((rs family))
-    (multiple-value-bind (stamp newst newru) (metro-round rs)
-      (declare (ignore newru))
-      (loop
-	when (null metronome)
-	return nil
-	do (setf (values metronome state rule)
-		 (cond
-		  ((or (not (eql newst state))
-		       (dt> stamp metronome))
-		   (metro-round rs))
-		  ((dt= stamp metronome)
-		   (metro-next rs rule))
-		  (t
-		   (error "state inconsistent ~a < ~a" stamp metronome))))
-	unless (eql state '+market-last+)
-	return (values metronome state rule
-		       (get-end (slot-value rule 'next)))))))
-
 (provide :thhrule)
 (provide "thhrule")
 

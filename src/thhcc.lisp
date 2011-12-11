@@ -12,7 +12,7 @@
 (import 'thhrule::defholiday)
 
 ;; family stuff that isn't exported
-(import 'thhrule::set-metronome)
+(import 'thhrule::make-famiter)
 
 
 (defun my-command-line ()
@@ -34,14 +34,15 @@
 	       (dt< (metronome-of rs) cutoff))
     do (format t "~a	~a	~a	~a~%" d s r e)))
 
-(defmethod real-work ((rs thhrule::family) &key metro-sta metro-end)
-  (set-metronome metro-sta)
-  (loop
-    with cutoff = (or metro-end (make-stamp :unix 4294967295))
-    and d and s and r and e
-    while (and (multiple-value-setq (d s r e) (next-event rs))
-	       (dt< (metronome-of rs) cutoff))
-    do (format t "~a	~a	~a	~a~%" d s r e)))
+(defmethod real-work ((f thhrule::family) &key metro-sta metro-end)
+  ;; turn into a famiter
+  (let ((fi (make-famiter :family f)))
+    (loop
+      with cutoff = (or metro-end (make-stamp :unix 4294967295))
+      and d and s and r and e
+      while (and (multiple-value-setq (d s r e) (next-event fi))
+		 (dt< (metronome-of fi) cutoff))
+      do (format t "~a	~a	~a	~a~%" d s r e))))
 
 (defmethod real-work ((thing t) &key &allow-other-keys)
   (error "family ~a is not iterable" thing))
