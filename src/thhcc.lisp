@@ -25,15 +25,6 @@
 
 (defgeneric real-work (thing &key &allow-other-keys))
 
-(defmethod real-work ((rs thhrule::ruleset) &key metro-sta metro-end)
-  (setf (metronome-of rs) metro-sta)
-  (loop
-    with cutoff = (or metro-end (make-stamp :unix 4294967295))
-    and d and s and r and e
-    while (and (multiple-value-setq (d s r e) (next-event rs))
-	       (dt< (metronome-of rs) cutoff))
-    do (format t "~a	~a	~a	~a~%" d s r e)))
-
 (defmethod real-work ((f thhrule::family) &key metro-sta metro-end)
   ;; turn into a famiter
   (let ((fi (make-famiter :family f)))

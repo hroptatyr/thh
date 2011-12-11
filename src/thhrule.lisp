@@ -258,25 +258,6 @@
   (next-state-flip r metronome))
 
 
-;; rulesets
-(defclass ruleset ()
-  ((metronome
-    :initarg :metronome
-    :accessor metronome-of
-    :type stamp)
-   (state
-    :initform +market-last+
-    :type state)
-   (rule
-    :initform nil
-    :type rule)
-   (rules
-    :initarg :rules
-    :type sequence)))
-
-(defmacro make-ruleset (&rest stuff)
-  `(make-instance 'ruleset ,@stuff))
-
 (defun expand-rules (rules)
   "Expand every ruleset in RULES by its rules."
   (flet ((rulep (var-or-sym)
@@ -311,87 +292,6 @@
 			  :unix eo-mover)))
 	  (setf movee-next
 		(make-interval :start new-start :length length)))))))
-
-(defun pick-next (rules)
-  (let* ((chosen (car rules))
-	 (chostart (get-start chosen))
-	 (choend (get-end chosen))
-	 (covers (remove-if #'(lambda (r)
-				(or ;;(null (in-lieu-of r))
-				    (eql r chosen)
-				    (dt>= (get-start r) choend)))
-			    rules)))
-    ;; reschedule in-lieu holidays, british meaning, i.e. postpone them
-    (loop for r in covers
-      do (move-in-lieu chosen r))
-
-    (if chostart
-	(values chostart (get-start-state chosen) chosen)
-      (values nil '+market-last+ nil))))
-
-(defmethod metro-sort ((metronome stamp) (r1 rule) (r2 rule))
-  "Return T if R1 is sooner than R2."
-  (let ((ne1 (next-event/rule metronome r1))
-	(ne2 (next-event/rule metronome r2)))
-    (cond
-     ((dt< ne1 ne2)
-      t)
-     ((dt= ne1 ne2)
-      ;; in-lieu rules count less
-      (if (in-lieu-of r1)
-	  nil
-	(if (in-lieu-of r2)
-	    t
-	  (state> (get-start-state r1) (get-start-state r2))))))))
-
-(defmethod metro-next ((rs ruleset) (r rule))
-  "Find next metronome point, given that R is the chosen rule."
-  (with-slots (rules) rs
-    (with-slots ((rnext next) (rstate state-start)) r
-      ;; find first rule whose start > r's start and whose state > r's state
-      (let ((cand
-	     (find-if #'(lambda (a)
-			  (with-slots ((anext next) (astate state-start)) a
-			    (let ((astart (get-start anext))
-				  (aend (get-end anext))
-				  (rstart (get-start rnext))
-				  (rend (get-end rnext)))
-			      (and astart
-				   (dt> astart rstart)
-				   (dt<= astart rend)
-				   (or (state> astate rstate)
-				       (dt> aend rend))))))
-		      rules)))
-	(if cand
-	    (values (get-start cand) (get-start-state cand) cand)
-	  (values (get-end rnext) (get-end-state r) r))))))
-
-(defmethod metro-round ((rs ruleset))
-  (with-slots (metronome state rules) rs
-    ;; stable-sort needs #'setf'ing under sbcl
-    (setf rules (sort rules #'(lambda (a b) (metro-sort metronome a b))))
-    ;; pick a rule
-    (pick-next rules)))
-
-(defmethod next-event ((rs ruleset))
-  (with-slots (metronome state rule rules) rs
-    (multiple-value-bind (stamp newst newru) (metro-round rs)
-      (declare (ignore newru))
-      (loop
-	when (null metronome)
-	return nil
-	do (setf (values metronome state rule)
-		 (cond
-		  ((or (not (eql newst state))
-		       (dt> stamp metronome))
-		   (metro-round rs))
-		  ((dt= stamp metronome)
-		   (metro-next rs rule))
-		  (t
-		   (error "state inconsistent ~a < ~a" stamp metronome))))
-	unless (eql state '+market-last+)
-	return (values metronome state rule
-		       (get-end (slot-value rule 'next)))))))
 
 (provide :thhrule)
 (provide "thhrule")
