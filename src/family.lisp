@@ -68,7 +68,7 @@
 ;; family iterators, we promote normal families to iters to capture
 ;; the state and metronome but via inheritance this allows to use
 ;; the forgetful functor to create another iterator
-(defclass famiter (family)
+(defclass famiter ()
   ((metronome
     :initarg :metronome
     :initform nil
@@ -78,18 +78,12 @@
     :initarg :state
     :initform nil
     :accessor state-of
-    :type state)))
-
-(defun promote-class (thing &key from to)
-  (let* ((clof (class-of thing))
-	 (tyof (type-of thing))
-	 ;; check if we are a TO already
-	 (demote? (subtypep tyof to)))
-    (if demote?
-	thing
-      (let ((dyna (sym-conc (class-name clof) '/iter)))
-	(ensure-class dyna :direct-superclasses (list clof to))
-	(change-class thing dyna)))))
+    :type state)
+   (family
+    :initarg :family
+    :initform nil
+    :accessor family-of
+    :type family)))
 
 (defun make-famiter (&rest v+k)
   (multiple-value-bind (vals keys) (split-vals+keys v+k)
@@ -97,12 +91,11 @@
 			(car vals))
 		   (destructuring-bind (&key family &allow-other-keys) keys
 		     family))))
-      (if old
-	  (promote-class old :from 'family :to 'famiter)
-	(apply #'make-instance 'famiter :allow-other-keys t keys)))))
+      (make-instance 'famiter :family old))))
 
 (defmethod print-object ((f famiter) out)
   (print-unreadable-object (f out :type t)
-    (format out "~a @~a :state ~a" (name-of f) (metronome-of f) (state-of f))))
+    (format out "~a @~a :state ~a"
+	    (name-of (family-of f)) (metronome-of f) (state-of f))))
 
 (provide "family")
