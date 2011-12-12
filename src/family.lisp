@@ -96,7 +96,8 @@
 			 (car vals))
 		    (destructuring-bind (&key family &allow-other-keys) keys
 		      family)))
-	   (sta (compute-initial-metronome old)))
+	   (sta (destructuring-bind (&key metronome &allow-other-keys) keys
+		  (or metronome (compute-initial-metronome old)))))
       (make-instance 'famiter :family old :metronome sta))))
 
 (defmethod print-object ((f famiter) out)
