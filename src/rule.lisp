@@ -198,22 +198,28 @@
 			       &allow-other-keys)
   (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
 	(till/stamp (or (parse-dtall till) +dusk-of-time+))
-	(on/sym (get-dow/sym on)))
-    `(defrule ,name
-       :from ,from/stamp
-       :till ,till/stamp
-       :state ,state
-       :name ',name
-       :next-lambda
-       (lambda (stamp)
-	 (do* ((sf (get-unix ,from/stamp))
-	       (ss (get-unix stamp))
-	       (s (midnight (max sf ss) 0) (+ 86400 s))
-	       (probe))
-	     ((and (eql (get-dow (setq probe (make-date :unix s))) ',on/sym)
-		   (dt>= probe stamp))
-	      (if (d<= probe ,till/stamp)
-		  (make-interval :start probe :length ,for))))))))
+	(on/sym (get-dow/sym on))
+	(next-lambda (gensym (symbol-name name))))
+    `(let ((rule
+	    (make-rule
+	     :from ,from/stamp
+	     :till ,till/stamp
+	     :state ,state
+	     :name ',name)))
+       ;; close over the rule
+       (defun ,next-lambda (stamp)
+	 (with-accessors ((valid validity-of)) rule
+	   (do* ((sf (get-unix (start-of valid)))
+		 (ss (get-unix stamp))
+		 (s (midnight (max sf ss) 0) (+ 86400 s))
+		 (probe))
+	       ((and (eql (get-dow (setq probe (make-date :unix s))) ',on/sym)
+		     (dt>= probe stamp))
+		(if (d<= probe (end-of valid))
+		    (make-interval :start probe :length ,for))))))
+       ;; assign the closure as next-lambda
+       (setf (slot-value rule 'next-lambda) #',next-lambda)
+       (defvar ,name rule))))
 
 (defmacro defrule/monthly (name &key from till on which
 				;; by-year+month
@@ -223,34 +229,38 @@
 				state
 				&allow-other-keys)
   (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
-	(till/stamp (or (parse-dtall till) +dusk-of-time+)))
-    (let ((probe-fun
-	   (cond
-	    ((and (null function) (null which))
-	     (lambda (year month)
-	       (make-date :year year :mon month :dom on)))
-	    ((null function)
-	     (lambda (year month)
-	       (make-ymcw :year year :mon month :dow on :which which)))
-	    ((eql (car function) 'function)
-	     (eval function))
-	    (t
-	     (error "~a is not a function" function)))))
-      `(defrule ,name
-	 :from ,from/stamp
-	 :till ,till/stamp
-	 :state ,state
-	 :name ',name
-	 :in-lieu ,in-lieu
-	 :next-lambda
-	 (lambda (stamp)
-	   (do* ((ym (max-stamp ,from/stamp stamp))
-		 (m (get-mon ym) (if (> (1+ m) 12) 1 (1+ m)))
-		 (y (get-year ym) (if (= m 1) (1+ y) y))
-		 (probe))
-	       ((dt>= (setq probe (funcall ,probe-fun y m)) stamp)
-		(if (d<= probe ,till/stamp)
-		    (make-interval :start probe :length ,for)))))))))
+	(till/stamp (or (parse-dtall till) +dusk-of-time+))
+	(next-lambda (gensym (symbol-name name))))
+    `(flet ((probe-fun (year month)
+	      (cond
+	       (,(and (null function) (null which))
+		(make-date :year year :mon month :dom ,on))
+	       (,(null function)
+		(make-ymcw :year year :mon month :dow ,on :which ,which))
+	       (,(eql (car function) 'function)
+		(funcall ,function year month))
+	       (t
+		(error "~a is not a function" ,function)))))
+       (let ((rule
+	      (make-rule
+	       :from ,from/stamp
+	       :till ,till/stamp
+	       :state ,state
+	       :name ',name
+	       :in-lieu ,in-lieu)))
+	 ;; close over rule
+	 (defun ,next-lambda (stamp)
+	   (with-accessors ((valid validity-of)) rule
+	     (do* ((ym (max-stamp (start-of valid) stamp))
+		   (m (get-mon ym) (if (> (1+ m) 12) 1 (1+ m)))
+		   (y (get-year ym) (if (= m 1) (1+ y) y))
+		   (probe))
+		 ((dt>= (setq probe (probe-fun y m)) stamp)
+		  (if (d<= probe (end-of valid))
+		      (make-interval :start probe :length ,for))))))
+	 ;; assign the closure as next-lambda
+	 (setf (slot-value rule 'next-lambda) #',next-lambda)
+	 (defvar ,name rule)))))
 
 (defmacro defrule/yearly (name &key from till in on which
 			       ;; by-year
@@ -261,34 +271,35 @@
 			       &allow-other-keys)
   (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
 	(till/stamp (or (parse-dtall till) +dusk-of-time+))
-	(in/num (get-mon/num in)))
-    (let ((probe-fun
-	   (cond
-	    ((and (null function) (null which))
-	     (lambda (year)
-	       (make-date :year year :mon in/num :dom on)))
-	    ((null function)
-	     (lambda (year)
-	       (make-ymcw :year year :mon in/num :dow on :which which)))
-	    ((eql (car function) 'function)
-	     (eval function))
-	    (t
-	     (error "~a is not a function" function)))))
-      `(defrule ,name
-	 :from ,from/stamp
-	 :till ,till/stamp
-	 :state ,state
-	 :name ',name
-	 :in-lieu ,in-lieu
-	 :next-lambda
-	 (lambda (stamp)
-	   (do* ((ys (get-year stamp))
-		 (yf ,(get-year from/stamp))
-		 (y (max ys yf) (1+ y))
-		 (probe))
-	       ((dt>= (setq probe (funcall ,probe-fun y)) stamp)
-		(if (d<= probe ,till/stamp)
-		    (make-interval :start probe :length ,for)))))))))
+	(in/num (get-mon/num in))
+	(next-lambda (gensym (symbol-name name))))
+    `(flet ((probe-fun (year)
+	      (cond
+	       (,(and (null function) (null which))
+		(make-date :year year :mon ,in/num :dom ,on))
+	       (,(null function)
+		(make-ymcw :year year :mon ,in/num :dow ,on :which ,which))
+	       (,(eql (car function) 'function)
+		(funcall ,function year))
+	       (t
+		(error "~a is not a function" ,function)))))
+       (let ((rule
+	      (make-rule
+	       :from ,from/stamp
+	       :till ,till/stamp
+	       :state ,state
+	       :name ',name
+	       :in-lieu ,in-lieu)))
+	 ;; close over rule
+	 (defun ,next-lambda (stamp)
+	   (with-accessors ((valid validity-of)) rule
+	     (do* ((ys (get-year stamp))
+		   (yf (get-year (start-of valid)))
+		   (y (max ys yf) (1+ y))
+		   (probe))
+		 ((dt>= (setq probe (probe-fun y)) stamp)
+		  (if (d<= probe (end-of valid))
+		      (make-interval :start probe :length ,for))))))))))
 
 
 ;; super macros and funs
