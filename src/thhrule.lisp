@@ -47,9 +47,6 @@
 (defmacro deftimezone (name value &optional doc)
   `(defparameter ,name (make-timezone :path ,value) ,doc))
 
-(defmacro defsession (name &optional doc)
-  `(defvar ,name ,doc))
-
 
 (defmethod start-of ((r rule))
   (when (next-of r)
@@ -114,105 +111,6 @@
 
 (defmethod local-stamp->utc ((s integer) tz)
   (- s (utc-stamp->offset s tz)))
-
-;; some macros
-(defmacro defholiday-fun (name def &optional comment)
-  ;; double backquotes YAY
-  ;; we want
-  ;; (defmacro foo (name &rest rest)
-  ;;   (def name ,@rest
-  ;;        :start-state bla
-  ;;        :end-state bla))
-  (declare (ignore comment))
-  `(defmacro ,name (name &rest rest)
-     `(,',def ,name
-	      ,@rest
-	      :start-state +market-close+
-	      :end-state +market-last+)))
-
-(defmacro deftrading-hours (name &rest vals+keys)
-  (multiple-value-bind (vals keys) (split-vals+keys vals+keys)
-    (destructuring-bind (&key open close &allow-other-keys) keys
-      (let ((doc (when (stringp (car vals))
-		   (prog1
-		       (car vals)
-		     (setq vals (cdr vals))))))
-	(declare (ignore doc))
-
-	(if (null vals)
-	    `(defrule/daily ,name ,@keys
-	       :start ,open
-	       :end ,close
-	       :start-state +market-open+
-	       :end-state +market-close+
-	       :allow-other-keys t)
-	  ;; otherwise assume it's a list so we deliver a ruleset
-	  `(defruleset ,name
-	     ,@(loop
-		 with prev-r = nil
-		 for r in vals
-		 collect
-		 (multiple-value-bind (vals keys) (split-vals+keys r)
-		   (declare (ignore vals))
-		   (destructuring-bind
-		       (&key open close from till &allow-other-keys) keys
-		     (declare (ignore till))
-		     (let ((name (gensym (symbol-name name)))
-			   rule)
-		       (eval `(defrule/daily ,name ,@keys
-				:start ,open
-				:end ,close
-				:start-state +market-open+
-				:end-state +market-close+
-				:allow-other-keys t))
-		       ;; chain from/till slots
-		       (setf rule (symbol-value name))
-		       (when (and prev-r
-				  from
-				  (eql (slot-value prev-r 'till)
-				       +dusk-of-time+))
-			 (setf (slot-value prev-r 'till)
-			       (slot-value rule 'from)))
-		       (when (and prev-r
-				  (null from)
-				  (not (eql (slot-value prev-r 'till)
-					    +dusk-of-time+)))
-			 (setf (slot-value rule 'from)
-			       (slot-value prev-r 'till)))
-		       (setf prev-r rule)
-		       ;; return the symbol so the ruleset makes sense
-		       name))))))))))
-
-(defmacro defholiday (name &rest vals+keys)
-  (multiple-value-bind (vals keys) (split-vals+keys vals+keys)
-    (destructuring-bind (&key in-lieu alias &allow-other-keys) keys
-      (let ((doc (if (stringp (car vals))
-		     (car vals)))
-	    (clone (cond
-		    ((boundp in-lieu)
-		     (symbol-value in-lieu))
-		    ((boundp alias)
-		     (symbol-value alias)))))
-	`(and
-	  (defvar ,name
-	    ,(and clone (copy-instance clone))
-	    ,(or doc "Aliased holiday rule."))
-	  ,(boundp in-lieu)
-	  ;; replace the next-lambda with an in-lieu lambda
-	  (with-slots (in-lieu) ,name
-	    (setf in-lieu t)))))))
-
-(defholiday-fun defholiday/once defrule/once
-  "For one off rules.")
-
-(defholiday-fun defholiday/weekly defrule/weekly
-  "Define weekly recurring holidays, weekends, etc..")
-
-(defholiday-fun defholiday/monthly defrule/monthly
-  "Define monthly recurring holidays.")
-
-(defholiday-fun defholiday/yearly defrule/yearly
-  "Define yearly recurring holidays.")
 
 
 ;; stuff that glues famiters and rules
@@ -312,29 +210,7 @@
 		  (mapcar #'state-of (cdr rules))))))))
 
 
-(defun expand-rules (rules)
-  "Expand every ruleset in RULES by its rules."
-  (flet ((rulep (var-or-sym)
-	   (var-or-sym-type-p var-or-sym 'rule))
-	 (rulesetp (var-or-sym)
-	   (var-or-sym-type-p var-or-sym 'ruleset)))
-    (declare (ignore #'rulep))
-    (loop for sym in rules
-      if (rulesetp sym)
-      append (slot-value (var-or-sym-value sym) 'rules)
-      else
-      collect (var-or-sym-value sym)
-      end)))
-
-(defmacro defruleset (name &rest vars+keys)
-  "&key (metronome +dawn-of-time+)"
-  (multiple-value-bind (rules keys) (split-vals+keys vars+keys)
-    (destructuring-bind (&key (metronome +dawn-of-time+)) keys
-      `(defvar ,name
-	 (make-ruleset
-	  :metronome ,(parse-dtall (eval metronome))
-	  :rules ',(expand-rules rules))))))
-
+;; other stuff, for keeps
 (defmethod move-in-lieu ((mover rule) (movee rule))
   "Move MOVEE to the end of MOVER."
   (with-slots ((mover-next next)) mover
