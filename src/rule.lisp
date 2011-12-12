@@ -126,8 +126,6 @@
 ;; actual functionality
 (defmacro defrule/once (name &key from till on (for 1)
 			     in-year function
-			     (start-state '+market-last+)
-			     (end-state '+market-last+)
 			     state
 			     &allow-other-keys)
   "Define a one-off event."
@@ -141,10 +139,7 @@
 	  (t
 	   (parse-date on)))))
     `(defrule ,name
-       :from ,from/stamp
-       :till ,till/stamp
-       :state-start ',start-state
-       :state-end ',end-state
+       :validity ,(make-interval :start from/stamp :end till/stamp)
        :state ,state
        :name ',name
        :next
@@ -156,8 +151,6 @@
 (defmacro defrule/daily (name &key from till
 			      start starts end ends
 			      timezone
-			      (start-state '+market-last+)
-			      (end-state '+market-last+)
 			      state
 			      &allow-other-keys)
   (let* ((sta/stamp (parse-time (or start starts "00:00:00")))
@@ -174,11 +167,8 @@
 
     `(let ((rule
 	    (make-rule
-	     :from ,from/stamp
-	     :till ,till/stamp
+	     :validity ,(make-interval :start from/stamp :end till/stamp)
 	     :timezone ,zone
-	     :state-start ',start-state
-	     :state-end ',end-state
 	     :state ,state
 	     :name ',name))
 	   (ou (mod ,(get-unix sta/stamp) 86400))
@@ -202,18 +192,13 @@
        (defvar ,name rule))))
 
 (defmacro defrule/weekly (name &key from till on (for 1)
-			       (start-state '+market-last+)
-			       (end-state '+market-last+)
 			       state
 			       &allow-other-keys)
   (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
 	(till/stamp (or (parse-dtall till) +dusk-of-time+))
 	(on/sym (get-dow/sym on)))
     `(defrule ,name
-       :from ,from/stamp
-       :till ,till/stamp
-       :state-start ',start-state
-       :state-end ',end-state
+       :validity ,(make-interval :start from/stamp :end till/stamp)
        :state ,state
        :name ',name
        :next-lambda
@@ -232,8 +217,6 @@
 				function
 				in-lieu
 				(for 1)
-				(start-state '+market-last+)
-				(end-state '+market-last+)
 				state
 				&allow-other-keys)
   (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
@@ -251,10 +234,7 @@
 	    (t
 	     (error "~a is not a function" function)))))
       `(defrule ,name
-	 :from ,from/stamp
-	 :till ,till/stamp
-	 :state-start ',start-state
-	 :state-end ',end-state
+	 :validity ,(make-interval :start from/stamp :end till/stamp)
 	 :state ,state
 	 :name ',name
 	 :in-lieu ,in-lieu
@@ -273,8 +253,6 @@
 			       function
 			       in-lieu
 			       (for 1)
-			       (start-state '+market-last+)
-			       (end-state '+market-last+)
 			       state
 			       &allow-other-keys)
   (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
@@ -293,10 +271,7 @@
 	    (t
 	     (error "~a is not a function" function)))))
       `(defrule ,name
-	 :from ,from/stamp
-	 :till ,till/stamp
-	 :state-start ',start-state
-	 :state-end ',end-state
+	 :validity ,(make-interval :start from/stamp :end till/stamp)
 	 :state ,state
 	 :name ',name
 	 :in-lieu ,in-lieu
