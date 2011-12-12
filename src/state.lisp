@@ -35,22 +35,15 @@
 
 (require "package")
 (require "util")
+(require "family")
 (in-package :thhrule)
 
-(defclass state ()
-  ((name
-    :initarg :name
-    :accessor name-of)
-   (markets
+(defclass state (family)
+  ((markets
     :initarg :markets
     :initform nil
     :accessor markets-of
     :type (list market))
-   (rules
-    :initarg :rules
-    :initform nil
-    :accessor rules-of
-    :type (list rule))
    (implies
     :initarg :implies
     :initform nil
