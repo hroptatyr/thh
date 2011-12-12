@@ -139,7 +139,8 @@
 	  (t
 	   (parse-date on)))))
     `(defrule ,name
-       :validity ,(make-interval :start from/stamp :end till/stamp)
+       :from ,from/stamp
+       :till ,till/stamp
        :state ,state
        :name ',name
        :next
@@ -167,7 +168,8 @@
 
     `(let ((rule
 	    (make-rule
-	     :validity ,(make-interval :start from/stamp :end till/stamp)
+	     :from ,from/stamp
+	     :till ,till/stamp
 	     :timezone ,zone
 	     :state ,state
 	     :name ',name))
@@ -198,7 +200,8 @@
 	(till/stamp (or (parse-dtall till) +dusk-of-time+))
 	(on/sym (get-dow/sym on)))
     `(defrule ,name
-       :validity ,(make-interval :start from/stamp :end till/stamp)
+       :from ,from/stamp
+       :till ,till/stamp
        :state ,state
        :name ',name
        :next-lambda
@@ -234,7 +237,8 @@
 	    (t
 	     (error "~a is not a function" function)))))
       `(defrule ,name
-	 :validity ,(make-interval :start from/stamp :end till/stamp)
+	 :from ,from/stamp
+	 :till ,till/stamp
 	 :state ,state
 	 :name ',name
 	 :in-lieu ,in-lieu
@@ -271,7 +275,8 @@
 	    (t
 	     (error "~a is not a function" function)))))
       `(defrule ,name
-	 :validity ,(make-interval :start from/stamp :end till/stamp)
+	 :from ,from/stamp
+	 :till ,till/stamp
 	 :state ,state
 	 :name ',name
 	 :in-lieu ,in-lieu
