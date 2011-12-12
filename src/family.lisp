@@ -104,80 +104,25 @@
     (format out "~a @~a :state ~a"
 	    (name-of (family-of f)) (metronome-of f) (state-of f))))
 
+;; stuff for the event iteration
 (defgeneric next-event (thing))
-(defgeneric metro-round (thing))
-
-(defun pick-next (rules)
-  (let* ((chosen (car rules))
-	 (chostart (get-start chosen))
-	 (choend (get-end chosen))
-	 (covers (remove-if #'(lambda (r)
-				(or ;;(null (in-lieu-of r))
-				    (eql r chosen)
-				    (dt>= (get-start r) choend)))
-			    rules)))
-    ;; reschedule in-lieu holidays, british meaning, i.e. postpone them
-    (loop for r in covers
-      do (move-in-lieu chosen r))
-
-    (if chostart
-	(values chostart (get-start-state chosen) chosen)
-      (values nil '+market-last+ nil))))
-
-(defmethod metro-sort ((metronome stamp) (r1 rule) (r2 rule))
-  "Return T if R1 is sooner than R2."
-  (let ((ne1 (next-event/rule metronome r1))
-	(ne2 (next-event/rule metronome r2)))
-    (dt< ne1 ne2)))
+(defgeneric metro-round (famiter)
+  (:documentation
+   "Resort rules in FAMITER."))
 
 (defmethod metro-round ((fi famiter))
-  ;; stable-sort needs #'setf'ing under sbcl
   (let ((f (family-of fi)))
-    (setf (rules-of f)
-	  (sort (rules-of f) #'(lambda (a b)
-				 (metro-sort (metronome-of fi) a b))))
-    ;; pick a rule
-    (pick-next (rules-of f))))
-
-(defmethod metro-next ((fi famiter) (r rule))
-  "Find next metronome point, given that R is the chosen rule."
-  (let ((f (family-of fi)))
-    (with-slots ((rnext next) (rstate state-start)) r
-      ;; find first rule whose start > r's start and whose state > r's state
-      (let ((cand
-	     (find-if #'(lambda (a)
-			  (with-slots ((anext next) (astate state-start)) a
-			    (let ((astart (get-start anext))
-				  (aend (get-end anext))
-				  (rstart (get-start rnext))
-				  (rend (get-end rnext)))
-			      (and astart
-				   (dt> astart rstart)
-				   (dt<= astart rend)
-				   (or (state> astate rstate)
-				       (dt> aend rend))))))
-		      (rules-of f))))
-	(if cand
-	    (values (get-start cand) (get-start-state cand) cand)
-	  (values (get-end rnext) (get-end-state r) r))))))
+    (with-accessors ((r rules-of)) f
+      ;; stable-sort needs #'setf'ing under sbcl
+      (setf r
+	    (sort r #'(lambda (a b)
+			(metro-sort (metronome-of fi) a b))))
+      ;; all rules that match
+      (pick-next (metronome-of fi) r))))
 
 (defmethod next-event ((fi famiter))
-  (multiple-value-bind (stamp newst newru rule) (metro-round fi)
-    (declare (ignore newru))
-    (loop
-      when (null (metronome-of fi))
-      return nil
-      do (setf (values (metronome-of fi) (state-of fi) rule)
-	       (cond
-		((or (not (eql newst (state-of fi)))
-		     (dt> stamp (metronome-of fi)))
-		 (metro-round fi))
-		((dt= stamp (metronome-of fi))
-		 (metro-next fi rule))
-		(t
-		 (error "state inconsistent ~a < ~a" stamp (metronome-of fi)))))
-      unless (null (state-of fi))
-      return (values (metronome-of fi) (state-of fi) rule
-		     (get-end (slot-value rule 'next))))))
+  (let ((rules (metro-round fi)))
+    (when (setf (metronome-of fi) (car rules))
+      rules)))
 
 (provide "family")

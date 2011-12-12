@@ -43,40 +43,6 @@
 (in-package :thhrule)
 
 
-;; states
-(defconstant +market-last+ t)
-(defconstant +market-open+ t)
-(defconstant +market-close+ t)
-(defconstant +market-force+ t)
-
-(defparameter +states+
-  '(+market-last+ +market-open+ +market-close+ +market-force+))
-
-;;(deftype state () `(member ,@+states+))
-
-(defmethod state< (s1 s2)
-  ;; s1 < s2 iff s1 further left in +states+
-  (member s2 (cdr (member s1 +states+))))
-
-(defmethod state<= (s1 s2)
-  (or (eql s1 s2)
-      (state< s1 s2)))
-
-(defmethod state> (s1 s2)
-  (not (state<= s1 s2)))
-
-(defmethod state>= (s1 s2)
-  (or (eql s1 s2)
-      (state> s1 s2)))
-
-(defun max-state (a b)
-  (if b
-      (if (state> a b)
-	  a
-	b)
-    a))
-
-
 ;; sessions and timezones and other auxiliary stuff
 (defmacro deftimezone (name value &optional doc)
   `(defparameter ,name (make-timezone :path ,value) ,doc))
@@ -85,42 +51,35 @@
   `(defvar ,name ,doc))
 
 
-(defgeneric get-start (thing))
-(defgeneric get-end (thing))
-(defgeneric get-length (thing))
+(defmethod start-of ((r rule))
+  (when (next-of r)
+    (start-of (next-of r))))
 
-(defmethod get-start ((i interval))
-  (start-of i))
-
-(defmethod get-start ((r rule))
-  (with-slots (next) r
-    (get-start next)))
-
-(defmethod get-start ((r (eql nil)))
+(defmethod start-of ((r (eql nil)))
+  (declare (ignore r))
   nil)
 
-(defmethod get-end ((i interval))
-  (end-of i))
+(defmethod end-of ((r rule))
+  (when (next-of r)
+    (end-of (next-of r))))
 
-(defmethod get-end ((r rule))
-  (with-slots (next) r
-    (get-end next)))
-
-(defmethod get-end ((r (eql nil)))
+(defmethod end-of ((r (eql nil)))
+  (declare (ignore r))
   nil)
 
-(defmethod get-length ((i interval))
-  (length-of i))
+(defmethod length-of ((r rule))
+  (when (next-of r)
+    (length-of (next-of r))))
 
-(defmethod get-length ((r rule))
-  (with-slots (next) r
-    (get-end next)))
-
-(defmethod get-length ((r (eql nil)))
+(defmethod length-of ((r (eql nil)))
+  (declare (ignore r))
   nil)
 
 
 ;; aux methods, eql specialisers
+(defmethod dt> ((s1 stamp) (s2 (eql nil)))
+  nil)
+
 (defmethod dt> ((i1 interval) (i2 (eql nil)))
   nil)
 
@@ -128,8 +87,10 @@
   (declare (ignore i2))
   t)
 
+(defmethod dt= ((s1 stamp) (s2 (eql nil)))
+  nil)
+
 (defmethod dt= ((s1 interval) (s2 (eql nil)))
-  (declare (ignore s2))
   nil)
 
 (defmethod dt= ((s1 (eql nil)) s2)
@@ -253,9 +214,62 @@
 (defholiday-fun defholiday/yearly defrule/yearly
   "Define yearly recurring holidays.")
 
+
+;; stuff that glues famiters and rules
+(defgeneric metro-sort (stamp r1 r2)
+  (:documentation
+   ""))
+(defgeneric pick-next (stamp rules)
+  (:documentation
+   "Given STAMP and a list of RULES, find rules that switch the state next."))
+(defgeneric next-state-flip (stamp rule)
+  (:documentation
+   ""))
 
-(defmethod next-event/rule ((metronome stamp) (r rule))
-  (next-state-flip r metronome))
+(defmethod next-state-flip ((s stamp) (r rule))
+  (let* ((v (validity-of r))
+	 (vst (start-of v))
+	 (ven (end-of v))
+	 (s (max-stamp s vst)))
+
+    (when (or (null (next-of r))
+	      (dt>= s (end-of (next-of r))))
+      (setf (next-of r)
+	    (when (lambda-of r)
+	      (funcall (lambda-of r) s))))
+
+    (let ((res
+	   (when (next-of r)
+	     (cond
+	      ((dt< s (start-of (next-of r)))
+	       (start-of (next-of r)))
+	      ((dt< s (end-of (next-of r)))
+	       (end-of (next-of r)))))))
+      ;; inspect res once more, could be after valid-till-of
+      (unless (dt> res ven)
+	res))))
+
+(defmethod metro-sort ((metronome stamp) (r1 rule) (r2 rule))
+  "Return T if R1 is sooner than R2."
+  (let ((ne1 (next-state-flip r1 metronome))
+	(ne2 (next-state-flip r2 metronome)))
+    (dt< ne1 ne2)))
+
+(defmethod pick-next ((metro stamp) (rules list))
+  (let* ((chosen (car rules))
+	 (chosta (start-of chosen))
+	 (choend (end-of chosen))
+	 (cho (if (dt< metro chosta)
+		  chosta
+		choend))
+	 (rules (remove-if #'(lambda (r)
+			       (let ((sta (start-of r))
+				     (end (end-of r)))
+				 (not (or (dt= sta cho)
+					  (dt= end cho)))))
+			   rules)))
+    ;; multi values?
+    (cons cho rules)))
 
 
 (defun expand-rules (rules)

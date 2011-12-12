@@ -362,31 +362,4 @@
 	      (defrule ,name ,@v+k ,,@state/key)
 	    (push-rule ,,push-obj ,name))))))
 
-
-;; functionality on rules
-(defgeneric next-state-flip (r stamp))
-
-(defmethod next-state-flip ((r rule) (s stamp))
-  (let* ((v (validity-of r))
-	 (vst (start-of v))
-	 (ven (end-of v))
-	 (s (max-stamp s vst)))
-    (when (and (or (not (slot-boundp r 'next))
-		   (dt>= s (end-of (next-of r))))
-	       (lambda-of r))
-      (setf (next-of r)
-	    (funcall (lambda-of r) s)))
-
-    (let ((res
-	   (cond
-	    ((null (next-of r))
-	     nil)
-	    ((dt> s (start-of (next-of r)))
-	     (end-of (next-of r)))
-	    (t
-	     (start-of (next-of r))))))
-      ;; inspect res once more, could be after valid-till-of
-      (unless (dt> res ven)
-	res))))
-
 (provide "rule")

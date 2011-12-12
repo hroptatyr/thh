@@ -417,29 +417,12 @@
 (defmethod d> ((i1 interval) (i2 interval))
   (d> (start-of i1) (start-of i2)))
 
-(defmethod d>= ((i1 interval) (i2 interval))
-  (d>= (start-of i1) (start-of i2)))
-
-(defmethod d< ((i1 interval) (i2 interval))
-  (not (d>= i1 i2)))
-
-(defmethod d<= ((i1 interval) (i2 interval))
-  (not (d> i1 i2)))
-
 (defmethod dt= ((i1 interval) (i2 interval))
   (dt= (start-of i1) (start-of i2)))
 
 (defmethod dt> ((i1 interval) (i2 interval))
   (dt> (start-of i1) (start-of i2)))
 
-(defmethod dt>= ((i1 interval) (i2 interval))
-  (dt>= (start-of i1) (start-of i2)))
-
-(defmethod dt< ((i1 interval) (i2 interval))
-  (not (dt>= i1 i2)))
-
-(defmethod dt<= ((i1 interval) (i2 interval))
-  (not (dt> i1 i2)))
 
 (defgeneric containsp (thing1 thing2)
   (:documentation "Whether THING1 contains THING2 in some sense"))
