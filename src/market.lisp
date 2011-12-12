@@ -80,14 +80,16 @@
      ;; stuff that makes sense in conjunction with state or product
      (defmacro ,(sym-conc 'def name '-product) (name &rest v+k)
        (let ((mkt/prod (sym-conc ',name '/ name)))
-	 `(progn
-	    (defproduct ,mkt/prod ,@v+k)
-	    (product-add-markets ,mkt/prod ,,name))))
+	 `(prog1
+	      (defproduct ,mkt/prod ,@v+k)
+	    (product-add-markets ,mkt/prod ,,name)
+	    (market-add-products ,,name ,mkt/prod))))
      (defmacro ,(sym-conc 'def name '-state) (name &rest v+k)
        (let ((mkt/st (sym-conc ',name '/ name)))
-	 `(progn
-	    (defstate ,mkt/st ,@v+k)
-	    (state-add-markets ,mkt/st ,,name))))
+	 `(prog1
+	      (defstate ,mkt/st ,@v+k)
+	    (state-add-markets ,mkt/st ,,name)
+	    (market-add-states ,,name ,mkt/st))))
      ;; stuff that needs to close over ST
      (defun ,(sym-conc name '-add-states) (&rest states)
        (apply #'market-add-states mkt states))

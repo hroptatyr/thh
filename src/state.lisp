@@ -44,6 +44,11 @@
     :initform nil
     :accessor markets-of
     :type (list market))
+   (products
+    :initarg :products
+    :initform nil
+    :accessor products-of
+    :type (list product))
    (implies
     :initarg :implies
     :initform nil
@@ -74,6 +79,10 @@
 (defgeneric state-add-markets (s &rest markets))
 (defmethod state-add-markets ((s state) &rest markets)
   (pushnew-many (markets-of s) markets))
+
+(defgeneric state-add-products (s &rest products))
+(defmethod state-add-products ((s state) &rest products)
+  (pushnew-many (products-of s) products))
 
 (defmethod push-rule ((s state) r)
   (pushnew-many (rules-of s) (list r)))

@@ -42,7 +42,11 @@
   ((markets
     :initarg :markets
     :initform nil
-    :accessor markets-of)))
+    :accessor markets-of)
+   (states
+    :initarg :states
+    :initform nil
+    :accessor states-of)))
 
 (defun make-product (&rest v+k)
   (multiple-value-bind (vals keys) (split-vals+keys v+k)
@@ -54,6 +58,10 @@
 (defgeneric product-add-markets (p &rest markets))
 (defmethod product-add-markets ((p product) &rest markets)
   (pushnew-many (markets-of p) markets))
+
+(defgeneric product-add-states (p &rest states))
+(defmethod product-add-states ((p product) &rest states)
+  (pushnew-many (states-of p) states))
 
 (defgeneric product-add-rules (p &rest rules))
 (defmethod product-add-rules ((p product) &rest rules)
