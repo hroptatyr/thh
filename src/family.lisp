@@ -112,17 +112,18 @@
 
 (defmethod metro-round ((fi famiter))
   (let ((f (family-of fi)))
-    (with-accessors ((r rules-of)) f
-      ;; special case for rule lists with just one element
-      ;; (sort wouldn't touch them)
-      (if (cdr r)
+    (with-accessors ((metro metronome-of)) fi
+      (flet ((next (rule)
+	       (next-state-flip metro rule))
+	     (metro-sort (rule1 rule2)
+	       (metro-sort metro rule1 rule2)))
+	(with-accessors ((rules rules-of)) f
+	  ;; traverse rules first to make sure they're all up to data
+	  (mapc #'next rules)
 	  ;; stable-sort needs #'setf'ing under sbcl
-	  (setf r
-		(sort r #'(lambda (a b)
-			    (metro-sort (metronome-of fi) a b))))
-	(next-state-flip (metronome-of fi) (car r)))
-      ;; all rules that match
-      (pick-next (metronome-of fi) r))))
+	  (setf rules (sort rules #'metro-sort))
+	  ;; all rules that match
+	  (pick-next metro rules))))))
 
 (defmethod next-event ((fi famiter))
   (let ((rules (metro-round fi)))
