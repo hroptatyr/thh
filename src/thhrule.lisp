@@ -219,12 +219,20 @@
 (defgeneric metro-sort (stamp r1 r2)
   (:documentation
    ""))
+
 (defgeneric pick-next (stamp rules)
   (:documentation
    "Given STAMP and a list of RULES, find rules that switch the state next."))
+
 (defgeneric next-state-flip (stamp rule)
   (:documentation
    ""))
+
+(defgeneric next-event (thing))
+
+(defgeneric metro-round (famiter)
+  (:documentation
+   "Resort rules in FAMITER."))
 
 (defmethod next-state-flip ((s stamp) (r rule))
   (let* ((v (validity-of r))
@@ -241,10 +249,10 @@
     (let ((res
 	   (when (next-of r)
 	     (cond
-	      ((dt< s (start-of (next-of r)))
-	       (start-of (next-of r)))
-	      ((dt< s (end-of (next-of r)))
-	       (end-of (next-of r)))))))
+	      ((dt< s (start-of r))
+	       (start-of r))
+	      ((dt< s (end-of r))
+	       (end-of r))))))
       ;; inspect res once more, could be after valid-till-of
       (unless (dt> res ven)
 	res))))
@@ -270,6 +278,38 @@
 			   rules)))
     ;; multi values?
     (cons cho rules)))
+
+(defmethod metro-round ((fi famiter))
+  (let ((f (family-of fi)))
+    (with-accessors ((metro metronome-of)) fi
+      (flet ((next (rule)
+	       (next-state-flip metro rule))
+	     (metro-sort (rule1 rule2)
+	       (metro-sort metro rule1 rule2)))
+	(with-accessors ((rules rules-of)) f
+	  ;; traverse rules first to make sure they're all up to data
+	  (mapc #'next rules)
+	  ;; stable-sort needs #'setf'ing under sbcl
+	  (setf rules (sort rules #'metro-sort))
+	  ;; all rules that match
+  	  (pick-next metro rules))))))
+
+(defmethod next-event ((fi famiter))
+  (let ((rules (metro-round fi)))
+    (with-accessors ((metro metronome-of)) fi
+      (when (setf metro (car rules))
+	(flet ((state-of (r)
+		 (let ((sta (start-of r))
+		       (end (end-of r)))
+		   (cons (cond
+			  ((dt= sta metro)
+			   'set)
+			  ((dt= end metro)
+			   'unset)
+			  (t
+			   'identity)) (state-of r)))))
+	  (values metro
+		  (mapcar #'state-of (cdr rules))))))))
 
 
 (defun expand-rules (rules)

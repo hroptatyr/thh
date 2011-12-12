@@ -104,30 +104,4 @@
     (format out "~a @~a :state ~a"
 	    (name-of (family-of f)) (metronome-of f) (state-of f))))
 
-;; stuff for the event iteration
-(defgeneric next-event (thing))
-(defgeneric metro-round (famiter)
-  (:documentation
-   "Resort rules in FAMITER."))
-
-(defmethod metro-round ((fi famiter))
-  (let ((f (family-of fi)))
-    (with-accessors ((metro metronome-of)) fi
-      (flet ((next (rule)
-	       (next-state-flip metro rule))
-	     (metro-sort (rule1 rule2)
-	       (metro-sort metro rule1 rule2)))
-	(with-accessors ((rules rules-of)) f
-	  ;; traverse rules first to make sure they're all up to data
-	  (mapc #'next rules)
-	  ;; stable-sort needs #'setf'ing under sbcl
-	  (setf rules (sort rules #'metro-sort))
-	  ;; all rules that match
-	  (pick-next metro rules))))))
-
-(defmethod next-event ((fi famiter))
-  (let ((rules (metro-round fi)))
-    (when (setf (metronome-of fi) (car rules))
-      rules)))
-
 (provide "family")
