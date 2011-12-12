@@ -176,16 +176,16 @@
 	   (zone ,zone))
        ;; close over the rule, and stuff like the open and close times
        (defun ,next-lambda (stamp)
-	 (with-slots (from till timezone) rule
+	 (with-accessors ((valid validity-of) (tz timezone-of)) rule
 	   (flet ((probe (day timeofday)
 		    (let ((s (+ day timeofday)))
-		      (make-datetime :unix (local-stamp->utc s timezone)))))
-	     (let* ((fu (get-unix from))
-		    (su (utc-stamp->local (get-unix stamp) timezone))
+		      (make-datetime :unix (local-stamp->utc s tz)))))
+	     (let* ((fu (get-unix (start-of valid)))
+		    (su (utc-stamp->local (get-unix stamp) tz))
 		    (stamp/midnight (midnight (max su fu) ou))
 		    (probe/o (probe stamp/midnight ou))
 		    (probe/c (probe stamp/midnight cu)))
-	       (when (dt<= probe/o till)
+	       (when (dt<= probe/o (end-of valid))
 		 (make-interval :start probe/o :end probe/c))))))
        ;; assign the closure as next-lambda
        (setf (slot-value rule 'next-lambda) #',next-lambda)
