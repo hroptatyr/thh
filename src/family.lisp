@@ -113,10 +113,14 @@
 (defmethod metro-round ((fi famiter))
   (let ((f (family-of fi)))
     (with-accessors ((r rules-of)) f
-      ;; stable-sort needs #'setf'ing under sbcl
-      (setf r
-	    (sort r #'(lambda (a b)
-			(metro-sort (metronome-of fi) a b))))
+      ;; special case for rule lists with just one element
+      ;; (sort wouldn't touch them)
+      (if (cdr r)
+	  ;; stable-sort needs #'setf'ing under sbcl
+	  (setf r
+		(sort r #'(lambda (a b)
+			    (metro-sort (metronome-of fi) a b))))
+	(next-state-flip (metronome-of fi) (car r)))
       ;; all rules that match
       (pick-next (metronome-of fi) r))))
 

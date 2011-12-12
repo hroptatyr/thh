@@ -251,8 +251,8 @@
 
 (defmethod metro-sort ((metronome stamp) (r1 rule) (r2 rule))
   "Return T if R1 is sooner than R2."
-  (let ((ne1 (next-state-flip r1 metronome))
-	(ne2 (next-state-flip r2 metronome)))
+  (let ((ne1 (next-state-flip metronome r1))
+	(ne2 (next-state-flip metronome r2)))
     (dt< ne1 ne2)))
 
 (defmethod pick-next ((metro stamp) (rules list))
