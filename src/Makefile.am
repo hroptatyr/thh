@@ -18,7 +18,6 @@ thhcc_bin_SOURCES += util.lisp
 thhcc_bin_SOURCES += predef.lisp
 thhcc_bin_SOURCES += timezone.lisp
 thhcc_bin_SOURCES += copy-instance.lisp
-thhcc_bin_SOURCES += lexenv.lisp
 thhcc_bin_SOURCES += rule.lisp
 thhcc_bin_SOURCES += family.lisp
 thhcc_bin_SOURCES += market.lisp
