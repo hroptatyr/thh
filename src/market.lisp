@@ -34,38 +34,26 @@
 ;; IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (require "package")
-(require "timezone")
 (require "util")
+(require "family")
 (in-package :thhrule)
 
-(defclass market ()
-  ((name
-    :initarg :name
-    :accessor name-of)
-   (timezone
-    :initarg :timezone
-    :initform local-time::+utc-zone+
-    :accessor timezone-of)
-   (products
+(defclass market (family)
+  ((products
     :initarg :products
     :initform nil
     :accessor products-of)
    (states
     :initarg :states
     :initform nil
-    :accessor states-of)
-   (rules
-    :initarg :rules
-    :initform nil
-    :accessor rules-of)))
+    :accessor states-of)))
 
 (defun make-market (&rest v+k)
   (multiple-value-bind (vals keys) (split-vals+keys v+k)
-    (apply #'make-instance 'market keys)))
+    (declare (ignore vals))
+    (apply #'make-instance 'market :allow-other-keys t keys)))
 
-(defmethod print-object ((m market) out)
-  (print-unreadable-object (m out :type t)
-    (format out "~a" (name-of m))))
+;; no print-object method, fall back to family printer
 
 (defgeneric market-add-states (m &rest states))
 (defmethod market-add-states ((m market) &rest states)
@@ -92,14 +80,16 @@
      ;; stuff that makes sense in conjunction with state or product
      (defmacro ,(sym-conc 'def name '-product) (name &rest v+k)
        (let ((mkt/prod (sym-conc ',name '/ name)))
-	 `(progn
-	    (defproduct ,mkt/prod ,@v+k)
-	    (product-add-markets ,mkt/prod ,,name))))
+	 `(prog1
+	      (defproduct ,mkt/prod ,@v+k)
+	    (product-add-markets ,mkt/prod ,,name)
+	    (market-add-products ,,name ,mkt/prod))))
      (defmacro ,(sym-conc 'def name '-state) (name &rest v+k)
        (let ((mkt/st (sym-conc ',name '/ name)))
-	 `(progn
-	    (defstate ,mkt/st ,@v+k)
-	    (state-add-markets ,mkt/st ,,name))))
+	 `(prog1
+	      (defstate ,mkt/st ,@v+k)
+	    (state-add-markets ,mkt/st ,,name)
+	    (market-add-states ,,name ,mkt/st))))
      ;; stuff that needs to close over ST
      (defun ,(sym-conc name '-add-states) (&rest states)
        (apply #'market-add-states mkt states))

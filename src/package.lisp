@@ -59,9 +59,9 @@
 
    #:interval
    #:make-interval
-   #:get-interval-start
-   #:get-interval-end
-   #:get-interval-length
+   #:start-of
+   #:end-of
+   #:length-of
 
    #:d+
    #:d-
@@ -86,7 +86,9 @@
    #:copy-instance
    #:local-time
    #:stamp
-   #:it.bese.arnesi)
+   #:it.bese.arnesi
+   #+sbcl #:sb-mop
+   #+clisp #:clos)
   (:export
    #:defrule
    #:defrule/once

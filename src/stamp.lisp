@@ -375,17 +375,15 @@
 (defclass interval ()
   ((start
     :type date
-    :reader get-interval-start
-    :writer set-interval-start
+    :accessor start-of
     :initarg :start)
    (end
     :type date
-    :reader get-interval-end
-    :writer set-interval-end
+    :accessor end-of
     :initarg :end)
    (length
     :type integer
-    :reader get-interval-length
+    :reader length-of
     :initarg :length)))
 
 (defun make-interval (&key start end length)
@@ -394,13 +392,13 @@
 		 :end (or end (d+ start length))
 		 :length (or length (d- end start))))
 
-(defmethod set-start :after (s (i interval))
+(defmethod (setf start-of) :after (s (i interval))
   "Update length slot."
-  (setf (slot-value i 'length) (d- (get-interval-end i) s)))
+  (setf (slot-value i 'length) (d- (end-of i) s)))
 
-(defmethod set-end :after (e (i interval))
+(defmethod (setf end-of) :after (e (i interval))
   "Update length slot."
-  (setf (slot-value i 'length) (d- e (get-interval-start i))))
+  (setf (slot-value i 'length) (d- e (start-of i))))
 
 (defmethod print-object ((i interval) out)
   (with-slots (start end length) i
@@ -410,51 +408,34 @@
 	      start end length))))
 
 (defmethod i= ((i1 interval) (i2 interval))
-  (and (d= (get-interval-start i1) (get-interval-start i2))
-       (d= (get-interval-end i1) (get-interval-end i2))))
+  (and (d= (start-of i1) (start-of i2))
+       (d= (end-of i1) (end-of i2))))
 
 (defmethod d= ((i1 interval) (i2 interval))
-  (d= (get-interval-start i1) (get-interval-start i2)))
+  (d= (start-of i1) (start-of i2)))
 
 (defmethod d> ((i1 interval) (i2 interval))
-  (d> (get-interval-start i1) (get-interval-start i2)))
-
-(defmethod d>= ((i1 interval) (i2 interval))
-  (d>= (get-interval-start i1) (get-interval-start i2)))
-
-(defmethod d< ((i1 interval) (i2 interval))
-  (not (d>= i1 i2)))
-
-(defmethod d<= ((i1 interval) (i2 interval))
-  (not (d> i1 i2)))
+  (d> (start-of i1) (start-of i2)))
 
 (defmethod dt= ((i1 interval) (i2 interval))
-  (dt= (get-interval-start i1) (get-interval-start i2)))
+  (dt= (start-of i1) (start-of i2)))
 
 (defmethod dt> ((i1 interval) (i2 interval))
-  (dt> (get-interval-start i1) (get-interval-start i2)))
+  (dt> (start-of i1) (start-of i2)))
 
-(defmethod dt>= ((i1 interval) (i2 interval))
-  (dt>= (get-interval-start i1) (get-interval-start i2)))
-
-(defmethod dt< ((i1 interval) (i2 interval))
-  (not (dt>= i1 i2)))
-
-(defmethod dt<= ((i1 interval) (i2 interval))
-  (not (dt> i1 i2)))
 
 (defgeneric containsp (thing1 thing2)
   (:documentation "Whether THING1 contains THING2 in some sense"))
 
 (defmethod containsp ((i interval) (s stamp))
   "Return non-NIL when I contains S."
-  (and (d>= s (get-interval-start i))
-       (d<= s (get-interval-end i))))
+  (and (d>= s (start-of i))
+       (d<= s (end-of i))))
 
 (defmethod containsp ((i1 interval) (i2 interval))
   "Return non-NIL when I1 contains I2."
-  (and (containsp i1 (get-interval-start i2))
-       (containsp i1 (get-interval-end i2))))
+  (and (containsp i1 (start-of i2))
+       (containsp i1 (end-of i2))))
 
 (defgeneric connectedp (thing1 thing2)
   (:documentation "Whether things are connected in some sense."))
@@ -462,13 +443,13 @@
 (defmethod connectedp ((i interval) (s stamp))
   "Return non-NIL when there is no datetime point between I and S."
   (or (containsp i s)
-      (consecutivep (get-interval-start i) s)
-      (consecutivep (get-interval-end i) s)))
+      (consecutivep (start-of i) s)
+      (consecutivep (end-of i) s)))
 
 (defmethod connectedp ((i1 interval) (i2 interval))
   "Return non-NIL when there is no datetime point between I1 and I2."
-  (or (connectedp i1 (get-interval-start i2))
-      (connectedp i1 (get-interval-end i2))))
+  (or (connectedp i1 (start-of i2))
+      (connectedp i1 (end-of i2))))
 
 (provide :stamp)
 (provide "stamp")

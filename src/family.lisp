@@ -1,4 +1,4 @@
-;;; product -- notion of products
+;;; family -- families of rules
 ;;
 ;; Copyright (C) 2011 Sebastian Freundt
 ;;
@@ -34,51 +34,74 @@
 ;; IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (require "package")
+(require "timezone")
 (require "util")
-(require "family")
+(require "rule")
 (in-package :thhrule)
 
-(defclass product (family)
-  ((markets
-    :initarg :markets
+
+;; family class
+(defclass family ()
+  ((name
+    :initarg :name
+    :initform 'unknown
+    :accessor name-of)
+   (timezone
+    :initarg :timezone
+    :initform local-time::+utc-zone+
+    :accessor timezone-of)
+   (rules
+    :initarg :rules
     :initform nil
-    :accessor markets-of)
-   (states
-    :initarg :states
-    :initform nil
-    :accessor states-of)))
+    :accessor rules-of)))
 
-(defun make-product (&rest v+k)
+(defun make-family (&rest v+k)
   (multiple-value-bind (vals keys) (split-vals+keys v+k)
     (declare (ignore vals))
-    (apply #'make-instance 'product :allow-other-keys t keys)))
+    (apply #'make-instance 'family :allow-other-keys t keys)))
 
-;; no print-object method, fall back to family printer
+(defmethod print-object ((f family) out)
+  (print-unreadable-object (f out :type t)
+    (format out "~a" (name-of f))))
 
-(defgeneric product-add-markets (p &rest markets))
-(defmethod product-add-markets ((p product) &rest markets)
-  (pushnew-many (markets-of p) markets))
+
+;; family iterators, we promote normal families to iters to capture
+;; the state and metronome but via inheritance this allows to use
+;; the forgetful functor to create another iterator
+(defclass famiter ()
+  ((metronome
+    :initarg :metronome
+    :initform nil
+    :accessor metronome-of
+    :type stamp)
+   (state
+    :initarg :state
+    :initform nil
+    :accessor state-of
+    :type state)
+   (family
+    :initarg :family
+    :initform nil
+    :accessor family-of
+    :type family)))
 
-(defgeneric product-add-states (p &rest states))
-(defmethod product-add-states ((p product) &rest states)
-  (pushnew-many (states-of p) states))
+(defun compute-initial-metronome (f)
+  ;; for now we just come up with a number
+  (declare (ignore f))
+  (make-date :year 1999 :mon 1 :dom 1))
 
-(defgeneric product-add-rules (p &rest rules))
-(defmethod product-add-rules ((p product) &rest rules)
-  (pushnew-many (rules-of p) rules))
+(defun make-famiter (&rest v+k)
+  (multiple-value-bind (vals keys) (split-vals+keys v+k)
+    (let* ((old (or (and (subtypep (type-of (car vals)) 'family)
+			 (car vals))
+		    (destructuring-bind (&key family &allow-other-keys) keys
+		      family)))
+	   (sta (compute-initial-metronome old)))
+      (make-instance 'famiter :family old :metronome sta))))
 
-(defmethod push-rule ((p product) r)
-  (product-add-rules p r))
+(defmethod print-object ((f famiter) out)
+  (print-unreadable-object (f out :type t)
+    (format out "~a @~a :state ~a"
+	    (name-of (family-of f)) (metronome-of f) (state-of f))))
 
-(defmacro defproduct (name &rest v+k)
-  `(let ((prod (make-product ,@v+k :name ',name)))
-     ;; convenience
-     (defrule-macros ,name :push-obj prod)
-
-     ;; stuff that needs to close over PROD
-     (defun ,(sym-conc name '-add-markets) (&rest markets)
-       (apply #'product-add-markets prod markets))
-     ;; and finally inject to environ
-     (defvar ,name prod)))
-
-(provide "product")
+(provide "family")

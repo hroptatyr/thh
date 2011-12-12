@@ -43,84 +43,40 @@
 (in-package :thhrule)
 
 
-;; states
-(defconstant +market-last+ t)
-(defconstant +market-open+ t)
-(defconstant +market-close+ t)
-(defconstant +market-force+ t)
-
-(defparameter +states+
-  '(+market-last+ +market-open+ +market-close+ +market-force+))
-
-;;(deftype state () `(member ,@+states+))
-
-(defmethod state< (s1 s2)
-  ;; s1 < s2 iff s1 further left in +states+
-  (member s2 (cdr (member s1 +states+))))
-
-(defmethod state<= (s1 s2)
-  (or (eql s1 s2)
-      (state< s1 s2)))
-
-(defmethod state> (s1 s2)
-  (not (state<= s1 s2)))
-
-(defmethod state>= (s1 s2)
-  (or (eql s1 s2)
-      (state> s1 s2)))
-
-(defun max-state (a b)
-  (if b
-      (if (state> a b)
-	  a
-	b)
-    a))
-
-
 ;; sessions and timezones and other auxiliary stuff
 (defmacro deftimezone (name value &optional doc)
   `(defparameter ,name (make-timezone :path ,value) ,doc))
 
-(defmacro defsession (name &optional doc)
-  `(defvar ,name ,doc))
-
 
-(defgeneric get-start (thing))
-(defgeneric get-end (thing))
-(defgeneric get-length (thing))
+(defmethod start-of ((r rule))
+  (when (next-of r)
+    (start-of (next-of r))))
 
-(defmethod get-start ((i interval))
-  (get-interval-start i))
-
-(defmethod get-start ((r rule))
-  (with-slots (next) r
-    (get-start next)))
-
-(defmethod get-start ((r (eql nil)))
+(defmethod start-of ((r (eql nil)))
+  (declare (ignore r))
   nil)
 
-(defmethod get-end ((i interval))
-  (get-interval-end i))
+(defmethod end-of ((r rule))
+  (when (next-of r)
+    (end-of (next-of r))))
 
-(defmethod get-end ((r rule))
-  (with-slots (next) r
-    (get-end next)))
-
-(defmethod get-end ((r (eql nil)))
+(defmethod end-of ((r (eql nil)))
+  (declare (ignore r))
   nil)
 
-(defmethod get-length ((i interval))
-  (get-interval-length i))
+(defmethod length-of ((r rule))
+  (when (next-of r)
+    (length-of (next-of r))))
 
-(defmethod get-length ((r rule))
-  (with-slots (next) r
-    (get-end next)))
-
-(defmethod get-length ((r (eql nil)))
+(defmethod length-of ((r (eql nil)))
+  (declare (ignore r))
   nil)
 
 
 ;; aux methods, eql specialisers
+(defmethod dt> ((s1 stamp) (s2 (eql nil)))
+  nil)
+
 (defmethod dt> ((i1 interval) (i2 (eql nil)))
   nil)
 
@@ -128,8 +84,10 @@
   (declare (ignore i2))
   t)
 
+(defmethod dt= ((s1 stamp) (s2 (eql nil)))
+  nil)
+
 (defmethod dt= ((s1 interval) (s2 (eql nil)))
-  (declare (ignore s2))
   nil)
 
 (defmethod dt= ((s1 (eql nil)) s2)
@@ -154,152 +112,105 @@
 (defmethod local-stamp->utc ((s integer) tz)
   (- s (utc-stamp->offset s tz)))
 
-;; some macros
-(defmacro defholiday-fun (name def &optional comment)
-  ;; double backquotes YAY
-  ;; we want
-  ;; (defmacro foo (name &rest rest)
-  ;;   (def name ,@rest
-  ;;        :start-state bla
-  ;;        :end-state bla))
-  (declare (ignore comment))
-  `(defmacro ,name (name &rest rest)
-     `(,',def ,name
-	      ,@rest
-	      :start-state +market-close+
-	      :end-state +market-last+)))
+
+;; stuff that glues famiters and rules
+(defgeneric metro-sort (stamp r1 r2)
+  (:documentation
+   ""))
 
-(defmacro deftrading-hours (name &rest vals+keys)
-  (multiple-value-bind (vals keys) (split-vals+keys vals+keys)
-    (destructuring-bind (&key open close &allow-other-keys) keys
-      (let ((doc (when (stringp (car vals))
-		   (prog1
-		       (car vals)
-		     (setq vals (cdr vals))))))
-	(declare (ignore doc))
+(defgeneric pick-next (stamp rules)
+  (:documentation
+   "Given STAMP and a list of RULES, find rules that switch the state next."))
 
-	(if (null vals)
-	    `(defrule/daily ,name ,@keys
-	       :start ,open
-	       :end ,close
-	       :start-state +market-open+
-	       :end-state +market-close+
-	       :allow-other-keys t)
-	  ;; otherwise assume it's a list so we deliver a ruleset
-	  `(defruleset ,name
-	     ,@(loop
-		 with prev-r = nil
-		 for r in vals
-		 collect
-		 (multiple-value-bind (vals keys) (split-vals+keys r)
-		   (declare (ignore vals))
-		   (destructuring-bind
-		       (&key open close from till &allow-other-keys) keys
-		     (declare (ignore till))
-		     (let ((name (gensym (symbol-name name)))
-			   rule)
-		       (eval `(defrule/daily ,name ,@keys
-				:start ,open
-				:end ,close
-				:start-state +market-open+
-				:end-state +market-close+
-				:allow-other-keys t))
-		       ;; chain from/till slots
-		       (setf rule (symbol-value name))
-		       (when (and prev-r
-				  from
-				  (eql (slot-value prev-r 'till)
-				       +dusk-of-time+))
-			 (setf (slot-value prev-r 'till)
-			       (slot-value rule 'from)))
-		       (when (and prev-r
-				  (null from)
-				  (not (eql (slot-value prev-r 'till)
-					    +dusk-of-time+)))
-			 (setf (slot-value rule 'from)
-			       (slot-value prev-r 'till)))
-		       (setf prev-r rule)
-		       ;; return the symbol so the ruleset makes sense
-		       name))))))))))
+(defgeneric next-state-flip (stamp rule)
+  (:documentation
+   ""))
 
-(defmacro defholiday (name &rest vals+keys)
-  (multiple-value-bind (vals keys) (split-vals+keys vals+keys)
-    (destructuring-bind (&key in-lieu alias &allow-other-keys) keys
-      (let ((doc (if (stringp (car vals))
-		     (car vals)))
-	    (clone (cond
-		    ((boundp in-lieu)
-		     (symbol-value in-lieu))
-		    ((boundp alias)
-		     (symbol-value alias)))))
-	`(and
-	  (defvar ,name
-	    ,(and clone (copy-instance clone))
-	    ,(or doc "Aliased holiday rule."))
-	  ,(boundp in-lieu)
-	  ;; replace the next-lambda with an in-lieu lambda
-	  (with-slots (in-lieu) ,name
-	    (setf in-lieu t)))))))
+(defgeneric next-event (thing))
 
-(defholiday-fun defholiday/once defrule/once
-  "For one off rules.")
+(defgeneric metro-round (famiter)
+  (:documentation
+   "Resort rules in FAMITER."))
 
-(defholiday-fun defholiday/weekly defrule/weekly
-  "Define weekly recurring holidays, weekends, etc..")
+(defmethod next-state-flip ((s stamp) (r rule))
+  (let* ((v (validity-of r))
+	 (vst (start-of v))
+	 (ven (end-of v))
+	 (s (max-stamp s vst)))
 
-(defholiday-fun defholiday/monthly defrule/monthly
-  "Define monthly recurring holidays.")
+    (when (or (null (next-of r))
+	      (dt>= s (end-of (next-of r))))
+      (setf (next-of r)
+	    (when (lambda-of r)
+	      (funcall (lambda-of r) s))))
 
-(defholiday-fun defholiday/yearly defrule/yearly
-  "Define yearly recurring holidays.")
+    (let ((res
+	   (when (next-of r)
+	     (cond
+	      ((dt< s (start-of r))
+	       (start-of r))
+	      ((dt< s (end-of r))
+	       (end-of r))))))
+      ;; inspect res once more, could be after valid-till-of
+      (unless (dt> res ven)
+	res))))
 
+(defmethod metro-sort ((metronome stamp) (r1 rule) (r2 rule))
+  "Return T if R1 is sooner than R2."
+  (let ((ne1 (next-state-flip metronome r1))
+	(ne2 (next-state-flip metronome r2)))
+    (dt< ne1 ne2)))
 
-(defmethod next-event/rule ((metronome stamp) (r rule))
-  (next-state-flip r metronome))
+(defmethod pick-next ((metro stamp) (rules list))
+  (let* ((chosen (car rules))
+	 (chosta (start-of chosen))
+	 (choend (end-of chosen))
+	 (cho (if (dt< metro chosta)
+		  chosta
+		choend))
+	 (rules (remove-if #'(lambda (r)
+			       (let ((sta (start-of r))
+				     (end (end-of r)))
+				 (not (or (dt= sta cho)
+					  (dt= end cho)))))
+			   rules)))
+    ;; multi values?
+    (cons cho rules)))
+
+(defmethod metro-round ((fi famiter))
+  (let ((f (family-of fi)))
+    (with-accessors ((metro metronome-of)) fi
+      (flet ((next (rule)
+	       (next-state-flip metro rule))
+	     (metro-sort (rule1 rule2)
+	       (metro-sort metro rule1 rule2)))
+	(with-accessors ((rules rules-of)) f
+	  ;; traverse rules first to make sure they're all up to data
+	  (mapc #'next rules)
+	  ;; stable-sort needs #'setf'ing under sbcl
+	  (setf rules (sort rules #'metro-sort))
+	  ;; all rules that match
+  	  (pick-next metro rules))))))
+
+(defmethod next-event ((fi famiter))
+  (let ((rules (metro-round fi)))
+    (with-accessors ((metro metronome-of)) fi
+      (when (setf metro (car rules))
+	(flet ((state-of (r)
+		 (let ((sta (start-of r))
+		       (end (end-of r)))
+		   (cons (cond
+			  ((dt= sta metro)
+			   'set)
+			  ((dt= end metro)
+			   'unset)
+			  (t
+			   'identity)) (state-of r)))))
+	  (values metro
+		  (mapcar #'state-of (cdr rules))))))))
 
 
-;; rulesets
-(defclass ruleset ()
-  ((metronome
-    :initarg :metronome
-    :accessor metronome-of
-    :type stamp)
-   (state
-    :initform +market-last+
-    :type state)
-   (rule
-    :initform nil
-    :type rule)
-   (rules
-    :initarg :rules
-    :type sequence)))
-
-(defmacro make-ruleset (&rest stuff)
-  `(make-instance 'ruleset ,@stuff))
-
-(defun expand-rules (rules)
-  "Expand every ruleset in RULES by its rules."
-  (flet ((rulep (var-or-sym)
-	   (var-or-sym-type-p var-or-sym 'rule))
-	 (rulesetp (var-or-sym)
-	   (var-or-sym-type-p var-or-sym 'ruleset)))
-    (declare (ignore #'rulep))
-    (loop for sym in rules
-      if (rulesetp sym)
-      append (slot-value (var-or-sym-value sym) 'rules)
-      else
-      collect (var-or-sym-value sym)
-      end)))
-
-(defmacro defruleset (name &rest vars+keys)
-  "&key (metronome +dawn-of-time+)"
-  (multiple-value-bind (rules keys) (split-vals+keys vars+keys)
-    (destructuring-bind (&key (metronome +dawn-of-time+)) keys
-      `(defvar ,name
-	 (make-ruleset
-	  :metronome ,(parse-dtall (eval metronome))
-	  :rules ',(expand-rules rules))))))
-
+;; other stuff, for keeps
 (defmethod move-in-lieu ((mover rule) (movee rule))
   "Move MOVEE to the end of MOVER."
   (with-slots ((mover-next next)) mover
@@ -311,87 +222,6 @@
 			  :unix eo-mover)))
 	  (setf movee-next
 		(make-interval :start new-start :length length)))))))
-
-(defun pick-next (rules)
-  (let* ((chosen (car rules))
-	 (chostart (get-start chosen))
-	 (choend (get-end chosen))
-	 (covers (remove-if #'(lambda (r)
-				(or (null (in-lieu-of r))
-				    (eql r chosen)
-				    (dt>= (get-start r) choend)))
-			    rules)))
-    ;; reschedule in-lieu holidays, british meaning, i.e. postpone them
-    (loop for r in covers
-      do (move-in-lieu chosen r))
-
-    (if chostart
-	(values chostart (get-start-state chosen) chosen)
-      (values nil '+market-last+ nil))))
-
-(defmethod metro-sort ((metronome stamp) (r1 rule) (r2 rule))
-  "Return T if R1 is sooner than R2."
-  (let ((ne1 (next-event/rule metronome r1))
-	(ne2 (next-event/rule metronome r2)))
-    (cond
-     ((dt< ne1 ne2)
-      t)
-     ((dt= ne1 ne2)
-      ;; in-lieu rules count less
-      (if (in-lieu-of r1)
-	  nil
-	(if (in-lieu-of r2)
-	    t
-	  (state> (get-start-state r1) (get-start-state r2))))))))
-
-(defmethod metro-next ((rs ruleset) (r rule))
-  "Find next metronome point, given that R is the chosen rule."
-  (with-slots (rules) rs
-    (with-slots ((rnext next) (rstate state-start)) r
-      ;; find first rule whose start > r's start and whose state > r's state
-      (let ((cand
-	     (find-if #'(lambda (a)
-			  (with-slots ((anext next) (astate state-start)) a
-			    (let ((astart (get-start anext))
-				  (aend (get-end anext))
-				  (rstart (get-start rnext))
-				  (rend (get-end rnext)))
-			      (and astart
-				   (dt> astart rstart)
-				   (dt<= astart rend)
-				   (or (state> astate rstate)
-				       (dt> aend rend))))))
-		      rules)))
-	(if cand
-	    (values (get-start cand) (get-start-state cand) cand)
-	  (values (get-end rnext) (get-end-state r) r))))))
-
-(defmethod metro-round ((rs ruleset))
-  (with-slots (metronome state rules) rs
-    ;; stable-sort needs #'setf'ing under sbcl
-    (setf rules (sort rules #'(lambda (a b) (metro-sort metronome a b))))
-    ;; pick a rule
-    (pick-next rules)))
-
-(defmethod next-event ((rs ruleset))
-  (with-slots (metronome state rule rules) rs
-    (multiple-value-bind (stamp newst newru) (metro-round rs)
-      (declare (ignore newru))
-      (loop
-	when (null metronome)
-	return nil
-	do (setf (values metronome state rule)
-		 (cond
-		  ((or (not (eql newst state))
-		       (dt> stamp metronome))
-		   (metro-round rs))
-		  ((dt= stamp metronome)
-		   (metro-next rs rule))
-		  (t
-		   (error "state inconsistent ~a < ~a" stamp metronome))))
-	unless (eql state '+market-last+)
-	return (values metronome state rule
-		       (get-end (slot-value rule 'next)))))))
 
 (provide :thhrule)
 (provide "thhrule")
