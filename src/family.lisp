@@ -82,6 +82,10 @@
     :initarg :states
     :accessor states-of
     :type simple-vector)
+   (state->index
+    :initarg :state->index
+    :accessor state->index-of
+    :type hash)
    (family
     :initarg :family
     :initform nil
@@ -110,14 +114,47 @@
 			      :element-type 'bit
 			      :initial-element 0)))
 	   ;; promote 'states to bit-vector
-	   (states (map 'simple-vector #'identity states)))
-      (make-instance 'famiter
-		     :family old :metronome sta
-		     :states states :state stv))))
+	   (states (map 'simple-vector #'identity states))
+	   ;; generate a hash table for state->index lookups
+	   (state->index (make-hash-table))
+
+	   ;; our resulting instance
+	   (res (make-instance 'famiter
+			       :family old :metronome sta
+			       :states states :state stv
+			       :state->index state->index)))
+      ;; populate the hash table
+      (loop
+	for s across states
+	for i from 0
+	do (setf (gethash s state->index) i))
+      res)))
 
 (defmethod print-object ((f famiter) out)
   (print-unreadable-object (f out :type t)
     (format out "~a @~a :state ~a"
 	    (name-of (family-of f)) (metronome-of f) (state-of f))))
+
+
+(defgeneric famiter-set-state (famiter rule)
+  (:documentation
+   "Compute a mask so that after XORing it to FAMITER's internal state
+the bit corresponding to RULE is set."))
+
+(defgeneric famiter-clr-state (famiter rule)
+  (:documentation
+   "Compute a mask so that after XORing it to FAMITER's internal state
+the bit corresponding to RULE is unset."))
+
+(defun %famiter-set-state (fi state value)
+  (let ((idx (gethash state (state->index-of fi))))
+    (when idx
+      (setf (sbit (state-of fi) idx) value))))
+
+(defmethod famiter-set-state ((fi famiter) state)
+  (%famiter-set-state fi state 1))
+
+(defmethod famiter-clr-state ((fi famiter) state)
+  (%famiter-set-state fi state 0))
 
 (provide "family")

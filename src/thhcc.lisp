@@ -14,6 +14,7 @@
 ;; family stuff that isn't exported
 (import 'thhrule::family)
 (import 'thhrule::make-famiter)
+(import 'thhrule::state-of)
 
 
 (defun my-command-line ()

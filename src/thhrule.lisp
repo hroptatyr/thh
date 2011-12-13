@@ -126,7 +126,10 @@
   (:documentation
    ""))
 
-(defgeneric next-event (thing))
+(defgeneric next-event (thing)
+  (:documentation
+   "Return as multiple values the stamp of the next event and
+a bitmask to be xor'd to the current state of THING."))
 
 (defgeneric metro-round (famiter)
   (:documentation
@@ -194,20 +197,19 @@
 
 (defmethod next-event ((fi famiter))
   (let ((rules (metro-round fi)))
-    (with-accessors ((metro metronome-of)) fi
+    (with-accessors ((metro metronome-of) (fist state-of)) fi
       (when (setf metro (car rules))
-	(flet ((state-of (r)
+	(flet ((set-state (r)
 		 (let ((sta (start-of r))
-		       (end (end-of r)))
-		   (cons (cond
-			  ((dt= sta metro)
-			   'set)
-			  ((dt= end metro)
-			   'unset)
-			  (t
-			   'identity)) (state-of r)))))
-	  (values metro
-		  (mapcar #'state-of (cdr rules))))))))
+		       (end (end-of r))
+		       (st (state-of r)))
+		   (cond
+		    ((dt= sta metro)
+		     (famiter-set-state fi st))
+		    ((dt= end metro)
+		     (famiter-clr-state fi st))))))
+	  (mapc #'set-state (cdr rules))
+	  (values metro (state-of fi)))))))
 
 
 ;; other stuff, for keeps
