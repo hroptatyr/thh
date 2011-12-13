@@ -96,11 +96,11 @@
     (let ((v (apply #'%validity-ctor keys)))
       (make-instance 'validity :validity v))))
 
-(defun make-rule (&rest v+k)
-  (multiple-value-bind (vals keys) (split-vals+keys v+k)
-    (declare (ignore vals))
-    (let ((v (apply #'%validity-ctor keys)))
-      (apply #'make-instance 'rule :validity v :allow-other-keys t keys))))
+(defmacro make-rule (&rest keys &key product &allow-other-keys)
+  (let ((v (apply #'%validity-ctor keys)))
+    ;; check special keys
+    (apply #'%auto-generate-families keys)
+    `(make-instance 'rule :validity ,v :allow-other-keys t ,@keys)))
 
 (defmethod print-object ((r recrev) out)
   (print-unreadable-object (r out :type t)
@@ -115,16 +115,33 @@
     (format out "~a" (name-of r))))
 
 (defmacro defrule (name &rest v+k)
-  `(let ((r (make-rule ,@v+k :name ',name)))
+  `(let ((r (make-rule ,@v+k :name ',name :allow-other-keys t)))
 
      ;; stuff that needs to close over R
 
      ;; and finally inject to environ
      (defvar ,name r)))
 
+(defun %auto-generate-families (&key product market state &allow-other-keys)
+  (macrolet ((maybe-gen (p &body form)
+			`(when (and ,p (not (boundp ,p)))
+			   (eval (progn ,@form)))))
+    ;; (put 'maybe-gen 'lisp-indent-function 1)
+    (maybe-gen product
+      (format t "** auto-gen'd product ~a~%" product)
+      `(defproduct ,product))
+
+    (maybe-gen market
+      (format t "** auto-gen'd market ~a~%" market)
+      `(defmarket ,market))
+
+    (maybe-gen state
+      (format t "** auto-gen'd state ~a~%" state)
+      `(defstate ,state))))
+
 
 ;; actual functionality
-(defmacro defrule/once (name &key from till on (for 1)
+(defmacro defrule/once (name &rest keys &key from till on (for 1)
 			     in-year function
 			     state
 			     &allow-other-keys)
@@ -138,6 +155,7 @@
 	   (funcall (eval function) (eval in-year)))
 	  (t
 	   (parse-date on)))))
+
     `(defrule ,name
        :from ,from/stamp
        :till ,till/stamp
@@ -149,10 +167,9 @@
 	  ;; otherwise the user is obviously confused
 	  nil))))
 
-(defmacro defrule/daily (name &key from till
+(defmacro defrule/daily (name &rest keys &key from till
 			      start starts end ends
-			      timezone
-			      state
+			      timezone state
 			      &allow-other-keys)
   (let* ((sta/stamp (parse-time (or start starts "00:00:00")))
 	 (end/stamp (parse-time (or end ends "23:59:59")))
@@ -172,7 +189,9 @@
 	     :till ,till/stamp
 	     :timezone ,zone
 	     :state ,state
-	     :name ',name))
+	     :name ',name
+	     ,@keys
+	     :allow-other-keys t))
 	   (ou (mod ,(get-unix sta/stamp) 86400))
 	   (cu (mod ,(get-unix end/stamp) 86400))
 	   (zone ,zone))
@@ -191,13 +210,17 @@
        (setf (slot-value rule 'next-lambda) #',next-lambda)
        (defvar ,name rule))))
 
-(defmacro defrule/weekly (name &key from till on (for 1)
+(defmacro defrule/weekly (name &rest keys &key from till on (for 1)
 			       state
 			       &allow-other-keys)
   (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
 	(till/stamp (or (parse-dtall till) +dusk-of-time+))
 	(on/sym (get-dow/sym on))
 	(next-lambda (gensym (symbol-name name))))
+
+    ;; check special keys
+    (apply #'%auto-generate-families keys)
+
     `(let ((rule
 	    (make-rule
 	     :from ,from/stamp
@@ -216,7 +239,7 @@
        (setf (slot-value rule 'next-lambda) #',next-lambda)
        (defvar ,name rule))))
 
-(defmacro defrule/monthly (name &key from till on which
+(defmacro defrule/monthly (name &rest keys &key from till on which
 				;; by-year+month
 				function
 				in-lieu
@@ -226,6 +249,10 @@
   (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
 	(till/stamp (or (parse-dtall till) +dusk-of-time+))
 	(next-lambda (gensym (symbol-name name))))
+
+    ;; check special keys
+    (apply #'%auto-generate-families keys)
+
     `(flet ((probe-fun (year month)
 	      (cond
 	       (,(and (null function) (null which))
@@ -254,7 +281,7 @@
 	 (setf (slot-value rule 'next-lambda) #',next-lambda)
 	 (defvar ,name rule)))))
 
-(defmacro defrule/yearly (name &key from till in on which
+(defmacro defrule/yearly (name &rest keys &key from till in on which
 			       ;; by-year
 			       function
 			       in-lieu
@@ -265,6 +292,10 @@
 	(till/stamp (or (parse-dtall till) +dusk-of-time+))
 	(in/num (get-mon/num in))
 	(next-lambda (gensym (symbol-name name))))
+
+    ;; check special keys
+    (apply #'%auto-generate-families keys)
+
     `(flet ((probe-fun (year)
 	      (cond
 	       (,(and (null function) (null which))
