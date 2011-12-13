@@ -76,9 +76,12 @@
     :type stamp)
    (state
     :initarg :state
-    :initform nil
     :accessor state-of
-    :type state)
+    :type simple-bit-vector)
+   (states
+    :initarg :states
+    :accessor states-of
+    :type simple-vector)
    (family
     :initarg :family
     :initform nil
@@ -96,8 +99,21 @@
 			 (car vals))
 		    (destructuring-bind (&key family &allow-other-keys) keys
 		      family)))
-	   (sta (compute-initial-metronome old)))
-      (make-instance 'famiter :family old :metronome sta))))
+	   (sta (destructuring-bind (&key metronome &allow-other-keys) keys
+		  (or metronome (compute-initial-metronome old))))
+	   ;; compute all states, so we can make a vector for it
+	   (states nil)
+	   (stv (progn
+		  (dolist (r (rules-of old))
+		    (pushnew (state-of r) states))
+		  (make-array (length states)
+			      :element-type 'bit
+			      :initial-element 0)))
+	   ;; promote 'states to bit-vector
+	   (states (map 'simple-vector #'identity states)))
+      (make-instance 'famiter
+		     :family old :metronome sta
+		     :states states :state stv))))
 
 (defmethod print-object ((f famiter) out)
   (print-unreadable-object (f out :type t)

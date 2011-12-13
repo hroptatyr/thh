@@ -178,17 +178,15 @@
 	   (zone ,zone))
        ;; close over the rule, and stuff like the open and close times
        (defun ,next-lambda (stamp)
-	 (with-accessors ((valid validity-of) (tz timezone-of)) rule
+	 (with-accessors ((tz timezone-of)) rule
 	   (flet ((probe (day timeofday)
 		    (let ((s (+ day timeofday)))
 		      (make-datetime :unix (local-stamp->utc s tz)))))
-	     (let* ((fu (get-unix (start-of valid)))
-		    (su (utc-stamp->local (get-unix stamp) tz))
-		    (stamp/midnight (midnight (max su fu) ou))
+	     (let* ((su (utc-stamp->local (get-unix stamp) tz))
+		    (stamp/midnight (midnight su ou))
 		    (probe/o (probe stamp/midnight ou))
 		    (probe/c (probe stamp/midnight cu)))
-	       (when (dt<= probe/o (end-of valid))
-		 (make-interval :start probe/o :end probe/c))))))
+	       (make-interval :start probe/o :end probe/c)))))
        ;; assign the closure as next-lambda
        (setf (slot-value rule 'next-lambda) #',next-lambda)
        (defvar ,name rule))))
@@ -208,15 +206,12 @@
 	     :name ',name)))
        ;; close over the rule
        (defun ,next-lambda (stamp)
-	 (with-accessors ((valid validity-of)) rule
-	   (do* ((sf (get-unix (start-of valid)))
-		 (ss (get-unix stamp))
-		 (s (midnight (max sf ss) 0) (+ 86400 s))
-		 (probe))
-	       ((and (eql (get-dow (setq probe (make-date :unix s))) ',on/sym)
-		     (dt>= probe stamp))
-		(if (d<= probe (end-of valid))
-		    (make-interval :start probe :length ,for))))))
+	 (do* ((ss (get-unix stamp))
+	       (s (midnight ss 0) (+ 86400 s))
+	       (probe))
+	     ((and (eql (get-dow (setq probe (make-date :unix s))) ',on/sym)
+		   (dt>= probe stamp))
+	      (make-interval :start probe :length ,for))))
        ;; assign the closure as next-lambda
        (setf (slot-value rule 'next-lambda) #',next-lambda)
        (defvar ,name rule))))
@@ -250,14 +245,11 @@
 	       :in-lieu ,in-lieu)))
 	 ;; close over rule
 	 (defun ,next-lambda (stamp)
-	   (with-accessors ((valid validity-of)) rule
-	     (do* ((ym (max-stamp (start-of valid) stamp))
-		   (m (get-mon ym) (if (> (1+ m) 12) 1 (1+ m)))
-		   (y (get-year ym) (if (= m 1) (1+ y) y))
-		   (probe))
-		 ((dt>= (setq probe (probe-fun y m)) stamp)
-		  (if (d<= probe (end-of valid))
-		      (make-interval :start probe :length ,for))))))
+	   (do* ((m (get-mon stamp) (if (> (1+ m) 12) 1 (1+ m)))
+		 (y (get-year stamp) (if (= m 1) (1+ y) y))
+		 (probe))
+	       ((dt>= (setq probe (probe-fun y m)) stamp)
+		(make-interval :start probe :length ,for))))
 	 ;; assign the closure as next-lambda
 	 (setf (slot-value rule 'next-lambda) #',next-lambda)
 	 (defvar ,name rule)))))
@@ -292,14 +284,11 @@
 	       :in-lieu ,in-lieu)))
 	 ;; close over rule
 	 (defun ,next-lambda (stamp)
-	   (with-accessors ((valid validity-of)) rule
-	     (do* ((ys (get-year stamp))
-		   (yf (get-year (start-of valid)))
-		   (y (max ys yf) (1+ y))
-		   (probe))
-		 ((dt>= (setq probe (probe-fun y)) stamp)
-		  (if (d<= probe (end-of valid))
-		      (make-interval :start probe :length ,for))))))))))
+	   (do* ((y (get-year stamp) (1+ y))
+		 (probe))
+	       ((dt>= (setq probe (probe-fun y)) stamp)
+		(make-interval :start probe :length ,for))))
+	 (defvar ,name rule)))))
 
 
 ;; super macros and funs

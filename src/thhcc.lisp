@@ -28,7 +28,7 @@
 
 (defmethod real-work ((f family) &key metro-sta metro-end)
   ;; turn into a famiter
-  (let ((fi (make-famiter :family f)))
+  (let ((fi (make-famiter :family f :metronome metro-sta)))
     (loop
       with cutoff = (or metro-end (make-stamp :unix 4294967295))
       and d and s
