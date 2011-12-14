@@ -96,7 +96,7 @@
     (let ((v (apply #'%validity-ctor keys)))
       (make-instance 'validity :validity v))))
 
-(defmacro make-rule (&rest keys &key product &allow-other-keys)
+(defmacro make-rule (&rest keys &key &allow-other-keys)
   (let ((v (apply #'%validity-ctor keys)))
     ;; check special keys
     (apply #'%auto-generate-families keys)
