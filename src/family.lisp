@@ -103,6 +103,17 @@
 (defun productp (f)
   (subtypep (type-of f) 'product))
 
+
+(defun %rule-market (r)
+  (if (marketp r)
+      r
+    (or (markets-of r) t)))
+
+(defun %rule-product (r)
+  (if (productp r)
+      r
+    (or (products-of r) t)))
+
 (defun make-famiter (&rest v+k)
   (multiple-value-bind (vals keys) (split-vals+keys v+k)
     (let* ((old (or (and (subtypep (type-of (car vals)) 'family)
@@ -117,23 +128,15 @@
 		  ;; generate a list of unique tuples (market+product . state)
 		  (dolist (r (rules-of old))
 		    (let* ((s (state-of r))
-			   (m (cond
-			       ((marketp old)
-				old)
-			       (t
-				markets-of r)))
-			   (p (cond
-			       ((productp old)
-				old)
-			       (t
-				(products-of r))))
+			   (m (%rule-market r))
+			   (p (%rule-product r))
 			   (c (vector m p s)))
 		      (pushnew c states :test #'equalp)))
 		  (format t "~a~%" states)
 		  (make-array (length states)
 			      :element-type 'bit
 			      :initial-element 0)))
-	   ;; promote 'states to bit-vector
+	   ;; promote 'states to vector
 	   (states (map 'simple-vector #'identity states))
 	   ;; generate a hash table for state->index lookups
 	   (state->index (make-hash-table :test #'equalp))
@@ -166,15 +169,28 @@ the bit corresponding to RULE is set."))
    "Compute a mask so that after XORing it to FAMITER's internal state
 the bit corresponding to RULE is unset."))
 
-(defun %famiter-set-state (fi state value)
-  (let ((idx (gethash state (state->index-of fi))))
+(defun %famiter-set-state (fi market product state value)
+  (let* ((key (vector market product state))
+	 (idx (gethash key (state->index-of fi))))
     (when idx
       (setf (sbit (state-of fi) idx) value))))
 
 (defmethod famiter-set-state ((fi famiter) state)
-  (%famiter-set-state fi state 1))
+  (%famiter-set-state fi t t state 1))
 
 (defmethod famiter-clr-state ((fi famiter) state)
-  (%famiter-set-state fi state 0))
+  (%famiter-set-state fi t t state 0))
+
+(defmethod famiter-set-state ((fi famiter) (rule rule))
+  (let ((m (%rule-market rule))
+	(p (%rule-product rule))
+	(s (state-of rule)))
+    (%famiter-set-state fi m p s 1)))
+
+(defmethod famiter-clr-state ((fi famiter) (rule rule))
+  (let ((m (%rule-market rule))
+	(p (%rule-product rule))
+	(s (state-of rule)))
+    (%famiter-set-state fi m p s 0)))
 
 (provide "family")
