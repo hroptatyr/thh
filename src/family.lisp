@@ -97,6 +97,23 @@
   (declare (ignore f))
   (make-date :year 1999 :mon 1 :dom 1))
 
+(defun marketp (f)
+  (subtypep (type-of f) 'market))
+
+(defun productp (f)
+  (subtypep (type-of f) 'product))
+
+
+(defun %rule-market (f r)
+  (if (marketp f)
+      f
+    (or (markets-of r) t)))
+
+(defun %rule-product (f r)
+  (if (productp f)
+      f
+    (or (products-of r) t)))
+
 (defun make-famiter (&rest v+k)
   (multiple-value-bind (vals keys) (split-vals+keys v+k)
     (let* ((old (or (and (subtypep (type-of (car vals)) 'family)
@@ -108,15 +125,21 @@
 	   ;; compute all states, so we can make a vector for it
 	   (states nil)
 	   (stv (progn
+		  ;; generate a list of unique tuples (market+product . state)
 		  (dolist (r (rules-of old))
-		    (pushnew (state-of r) states))
+		    (let* ((s (state-of r))
+			   (m (%rule-market old r))
+			   (p (%rule-product old r))
+			   (c (vector m p s)))
+		      (pushnew c states :test #'equalp)))
+		  (format t "~a~%" states)
 		  (make-array (length states)
 			      :element-type 'bit
 			      :initial-element 0)))
-	   ;; promote 'states to bit-vector
+	   ;; promote 'states to vector
 	   (states (map 'simple-vector #'identity states))
 	   ;; generate a hash table for state->index lookups
-	   (state->index (make-hash-table))
+	   (state->index (make-hash-table :test #'equalp))
 
 	   ;; our resulting instance
 	   (res (make-instance 'famiter
@@ -135,6 +158,13 @@
     (format out "~a @~a :state ~a"
 	    (name-of (family-of f)) (metronome-of f) (state-of f))))
 
+(defun %tuplify-state (fi st)
+  "Given famiter FI and state bit-vector ST return a tuple of affected states."
+  (loop
+    for b across st
+    for i from 0
+    when (= b 1)
+    collect (svref (states-of fi) i)))
 
 (defgeneric famiter-set-state (famiter rule)
   (:documentation
@@ -146,15 +176,28 @@ the bit corresponding to RULE is set."))
    "Compute a mask so that after XORing it to FAMITER's internal state
 the bit corresponding to RULE is unset."))
 
-(defun %famiter-set-state (fi state value)
-  (let ((idx (gethash state (state->index-of fi))))
+(defun %famiter-set-state (fi market product state value)
+  (let* ((key (vector market product state))
+	 (idx (gethash key (state->index-of fi))))
     (when idx
       (setf (sbit (state-of fi) idx) value))))
 
 (defmethod famiter-set-state ((fi famiter) state)
-  (%famiter-set-state fi state 1))
+  (%famiter-set-state fi t t state 1))
 
 (defmethod famiter-clr-state ((fi famiter) state)
-  (%famiter-set-state fi state 0))
+  (%famiter-set-state fi t t state 0))
+
+(defmethod famiter-set-state ((fi famiter) (rule rule))
+  (let ((m (%rule-market (family-of fi) rule))
+	(p (%rule-product (family-of fi) rule))
+	(s (state-of rule)))
+    (%famiter-set-state fi m p s 1)))
+
+(defmethod famiter-clr-state ((fi famiter) (rule rule))
+  (let ((m (%rule-market (family-of fi) rule))
+	(p (%rule-product (family-of fi) rule))
+	(s (state-of rule)))
+    (%famiter-set-state fi m p s 0)))
 
 (provide "family")
