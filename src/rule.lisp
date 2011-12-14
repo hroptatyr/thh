@@ -138,7 +138,9 @@
 
 (defun %auto-generate-families (&key product market state &allow-other-keys)
   (macrolet ((maybe-gen (p &body form)
-			`(when (and ,p (not (boundp ,p)))
+			`(when (and ,p
+				    (symbolp ,p)
+				    (not (boundp ,p)))
 			   (eval (progn ,@form)))))
     ;; (put 'maybe-gen 'lisp-indent-function 1)
     (maybe-gen product
