@@ -76,7 +76,15 @@
     :type state)
    (timezone
     :initarg :timezone
-    :accessor timezone-of)))
+    :accessor timezone-of)
+
+   ;; slots that are gonna disappear when the uberfamilies come
+   (products
+    :initarg :products
+    :accessor products-of)
+   (markets
+    :initarg :markets
+    :accessor markets-of)))
 
 (defun %validity-ctor (&key from till validity &allow-other-keys)
   (or validity
@@ -100,7 +108,13 @@
   (let ((v (apply #'%validity-ctor keys)))
     ;; check special keys
     (apply #'%auto-generate-families keys)
-    `(make-instance 'rule :validity ,v :allow-other-keys t ,@keys)))
+    (destructuring-bind (&key product market &allow-other-keys) keys
+      `(make-instance 'rule
+		      :validity ,v
+		      :allow-other-keys t
+		      ,@keys
+		      :products ,product
+		      :markets ,market))))
 
 (defmethod print-object ((r recrev) out)
   (print-unreadable-object (r out :type t)
@@ -218,9 +232,6 @@
 	(on/sym (get-dow/sym on))
 	(next-lambda (gensym (symbol-name name))))
 
-    ;; check special keys
-    (apply #'%auto-generate-families keys)
-
     `(let ((rule
 	    (make-rule
 	     :from ,from/stamp
@@ -249,9 +260,6 @@
   (let ((from/stamp (or (parse-dtall from) +dawn-of-time+))
 	(till/stamp (or (parse-dtall till) +dusk-of-time+))
 	(next-lambda (gensym (symbol-name name))))
-
-    ;; check special keys
-    (apply #'%auto-generate-families keys)
 
     `(flet ((probe-fun (year month)
 	      (cond
@@ -292,9 +300,6 @@
 	(till/stamp (or (parse-dtall till) +dusk-of-time+))
 	(in/num (get-mon/num in))
 	(next-lambda (gensym (symbol-name name))))
-
-    ;; check special keys
-    (apply #'%auto-generate-families keys)
 
     `(flet ((probe-fun (year)
 	      (cond

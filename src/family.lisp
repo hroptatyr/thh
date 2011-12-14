@@ -97,6 +97,12 @@
   (declare (ignore f))
   (make-date :year 1999 :mon 1 :dom 1))
 
+(defun marketp (f)
+  (subtypep (type-of f) 'market))
+
+(defun productp (f)
+  (subtypep (type-of f) 'product))
+
 (defun make-famiter (&rest v+k)
   (multiple-value-bind (vals keys) (split-vals+keys v+k)
     (let* ((old (or (and (subtypep (type-of (car vals)) 'family)
@@ -108,15 +114,29 @@
 	   ;; compute all states, so we can make a vector for it
 	   (states nil)
 	   (stv (progn
+		  ;; generate a list of unique tuples (market+product . state)
 		  (dolist (r (rules-of old))
-		    (pushnew (state-of r) states))
+		    (let* ((s (state-of r))
+			   (m (cond
+			       ((marketp old)
+				old)
+			       (t
+				markets-of r)))
+			   (p (cond
+			       ((productp old)
+				old)
+			       (t
+				(products-of r))))
+			   (c (vector m p s)))
+		      (pushnew c states :test #'equalp)))
+		  (format t "~a~%" states)
 		  (make-array (length states)
 			      :element-type 'bit
 			      :initial-element 0)))
 	   ;; promote 'states to bit-vector
 	   (states (map 'simple-vector #'identity states))
 	   ;; generate a hash table for state->index lookups
-	   (state->index (make-hash-table))
+	   (state->index (make-hash-table :test #'equalp))
 
 	   ;; our resulting instance
 	   (res (make-instance 'famiter
