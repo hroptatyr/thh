@@ -15,6 +15,7 @@
 (import 'thhrule::family)
 (import 'thhrule::make-famiter)
 (import 'thhrule::state-of)
+(import 'thhrule::%tuplify-state)
 
 
 (defun my-command-line ()

@@ -104,14 +104,14 @@
   (subtypep (type-of f) 'product))
 
 
-(defun %rule-market (r)
-  (if (marketp r)
-      r
+(defun %rule-market (f r)
+  (if (marketp f)
+      f
     (or (markets-of r) t)))
 
-(defun %rule-product (r)
-  (if (productp r)
-      r
+(defun %rule-product (f r)
+  (if (productp f)
+      f
     (or (products-of r) t)))
 
 (defun make-famiter (&rest v+k)
@@ -128,8 +128,8 @@
 		  ;; generate a list of unique tuples (market+product . state)
 		  (dolist (r (rules-of old))
 		    (let* ((s (state-of r))
-			   (m (%rule-market r))
-			   (p (%rule-product r))
+			   (m (%rule-market old r))
+			   (p (%rule-product old r))
 			   (c (vector m p s)))
 		      (pushnew c states :test #'equalp)))
 		  (format t "~a~%" states)
@@ -158,6 +158,13 @@
     (format out "~a @~a :state ~a"
 	    (name-of (family-of f)) (metronome-of f) (state-of f))))
 
+(defun %tuplify-state (fi st)
+  "Given famiter FI and state bit-vector ST return a tuple of affected states."
+  (loop
+    for b across st
+    for i from 0
+    when (= b 1)
+    collect (svref (states-of fi) i)))
 
 (defgeneric famiter-set-state (famiter rule)
   (:documentation
@@ -182,14 +189,14 @@ the bit corresponding to RULE is unset."))
   (%famiter-set-state fi t t state 0))
 
 (defmethod famiter-set-state ((fi famiter) (rule rule))
-  (let ((m (%rule-market rule))
-	(p (%rule-product rule))
+  (let ((m (%rule-market (family-of fi) rule))
+	(p (%rule-product (family-of fi) rule))
 	(s (state-of rule)))
     (%famiter-set-state fi m p s 1)))
 
 (defmethod famiter-clr-state ((fi famiter) (rule rule))
-  (let ((m (%rule-market rule))
-	(p (%rule-product rule))
+  (let ((m (%rule-market (family-of fi) rule))
+	(p (%rule-product (family-of fi) rule))
 	(s (state-of rule)))
     (%famiter-set-state fi m p s 0)))
 
