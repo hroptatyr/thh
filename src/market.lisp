@@ -90,13 +90,22 @@
 	      (defstate ,mkt/st ,@v+k)
 	    (state-add-markets ,mkt/st ,,name)
 	    (market-add-states ,,name ,mkt/st))))
-     ;; stuff that needs to close over ST
+
+     ;; stuff that needs to close over MKT
      (defun ,(sym-conc name '-add-states) (&rest states)
        (apply #'market-add-states mkt states))
      (defun ,(sym-conc name '-add-products) (&rest products)
        (apply #'market-add-products mkt products))
 
+     (defun ,(sym-conc name '-observes) (&rest rules)
+       (apply #'market-observes mkt rules))
+
      ;; and finally inject to environ
      (defvar ,name mkt)))
+
+(defgeneric market-observes (m &rest rules))
+(defmethod market-observes ((m market) &rest rules)
+  (pushnew-many (rules-of m) rules))
+
 
 (provide "market")
