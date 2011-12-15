@@ -236,17 +236,6 @@
 (defmacro pushnew-many (place list)
   `(setf ,place (union ,place ,list)))
 
-(defmacro with-lexenv-funs (funs env &body body)
-  ;; to close over lexically defined functions in macros
-  (let ((env-funs (lexical-functions env)))
-    `(flet
-	 ,@(mapcar #'(lambda (f)
-		       (let ((def (cdr (assoc f env-funs))))
-			 (when def
-			   `(,f (&rest args)
-				(apply ,def args)))))
-		   funs)
-	 ,@body)))
 
 
 (provide :thhrule.util)
