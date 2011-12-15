@@ -40,6 +40,7 @@
 (require "timezone")
 (require "util")
 (require "rule")
+(require "family")
 (in-package :thhrule)
 
 
@@ -170,15 +171,18 @@ a bitmask to be xor'd to the current state of THING."))
 	 (choend (end-of chosen))
 	 (cho (if (dt< metro chosta)
 		  chosta
-		choend))
-	 (rules (remove-if #'(lambda (r)
-			       (let ((sta (start-of r))
-				     (end (end-of r)))
-				 (not (or (dt= sta cho)
-					  (dt= end cho)))))
-			   rules)))
-    ;; multi values?
-    (cons cho rules)))
+		choend)))
+    (labels ((pick/rule (r)
+	       (let ((sta (start-of r))
+		     (end (end-of r)))
+		 (or (dt= sta cho)
+		     (dt= end cho))))
+	     (picker (rules)
+	       (remove-if #'(lambda (r)
+			      (not (pick/rule r)))
+			  rules)))
+      ;; multi values?
+      (values cho (picker rules)))))
 
 (defmethod metro-round ((fi famiter))
   (let ((f (family-of fi)))
@@ -193,12 +197,25 @@ a bitmask to be xor'd to the current state of THING."))
 	  ;; stable-sort needs #'setf'ing under sbcl
 	  (setf rules (sort rules #'metro-sort))
 	  ;; all rules that match
-  	  (pick-next metro rules))))))
+	  ;; filter rules that don't apply because of state issues
+  	  (multiple-value-bind (stamp rules) (pick-next metro rules)
+	    (let (inhib)
+	      (dostate ((m p s) fi)
+		(let ((i (inhibitions-of s)))
+		  (when i
+		    (pushnew-many inhib i))))
+	      (setf rules
+		    (delete-if #'(lambda (r)
+				   (when (member (state-of r) inhib)
+				     (format t "~a inhib'd~%" r)
+				     t))
+			       rules))
+	      (values stamp rules))))))))
 
 (defmethod next-event ((fi famiter))
-  (let ((rules (metro-round fi)))
+  (multiple-value-bind (stamp rules) (metro-round fi)
     (with-accessors ((metro metronome-of) (fist state-of)) fi
-      (when (setf metro (car rules))
+      (when (setf metro stamp)
 	(flet ((set-state (r)
 		 (let ((sta (start-of r))
 		       (end (end-of r)))
@@ -207,7 +224,7 @@ a bitmask to be xor'd to the current state of THING."))
 		     (famiter-set-state fi r))
 		    ((dt= end metro)
 		     (famiter-clr-state fi r))))))
-	  (mapc #'set-state (cdr rules))
+	  (mapc #'set-state rules)
 	  (values metro (state-of fi)))))))
 
 
