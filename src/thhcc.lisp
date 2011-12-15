@@ -1,6 +1,7 @@
 (require "package")
 (require "thhrule")
 (require "predef")
+(require "util")
 (use-package '(:thhrule :stamp))
 
 ;; old stuff
@@ -33,9 +34,10 @@
   (let ((fi (make-famiter :family f :metronome metro-sta))
 	(cutoff (or metro-end (make-stamp :unix 4294967295)))
 	d s)
-    (while (and (multiple-value-setq (d s) (next-event fi))
-		(dt< (metronome-of fi) cutoff))
-	(format t "~a	~a~%" d s))))
+    (loop
+      while (and (multiple-value-setq (d s) (next-event fi))
+		 (dt< (metronome-of fi) cutoff))
+      do (format t "~a	~a~%" d s))))
 
 (defmethod real-work ((thing t) &key &allow-other-keys)
   (error "family ~a is not iterable" thing))
