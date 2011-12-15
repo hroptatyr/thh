@@ -236,6 +236,10 @@
 (defmacro pushnew-many (place list)
   `(setf ,place (union ,place ,list)))
 
+(defmacro while (cond &body form)
+  `(loop
+     while ,cond
+     do (progn ,@form)))
 
 
 (provide :thhrule.util)
