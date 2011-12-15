@@ -30,13 +30,12 @@
 
 (defmethod real-work ((f family) &key metro-sta metro-end)
   ;; turn into a famiter
-  (let ((fi (make-famiter :family f :metronome metro-sta)))
-    (loop
-      with cutoff = (or metro-end (make-stamp :unix 4294967295))
-      and d and s
-      while (and (multiple-value-setq (d s) (next-event fi))
-		 (dt< (metronome-of fi) cutoff))
-      do (format t "~a	~a~%" d s))))
+  (let ((fi (make-famiter :family f :metronome metro-sta))
+	(cutoff (or metro-end (make-stamp :unix 4294967295)))
+	d s)
+    (while (and (multiple-value-setq (d s) (next-event fi))
+		(dt< (metronome-of fi) cutoff))
+	(format t "~a	~a~%" d s))))
 
 (defmethod real-work ((thing t) &key &allow-other-keys)
   (error "family ~a is not iterable" thing))
