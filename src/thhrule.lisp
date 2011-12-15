@@ -213,9 +213,11 @@ a bitmask to be xor'd to the current state of THING."))
 	      (values stamp rules))))))))
 
 (defmethod next-event ((fi famiter))
-  (multiple-value-bind (stamp rules) (metro-round fi)
+  (let (rules)
     (with-accessors ((metro metronome-of) (fist state-of)) fi
-      (when (setf metro stamp)
+      (while (and (multiple-value-setq (metro rules) (metro-round fi))
+		  (null rules)))
+      (when metro
 	(flet ((set-state (r)
 		 (let ((sta (start-of r))
 		       (end (end-of r)))
