@@ -158,13 +158,45 @@
     (format out "~a @~a :state ~a"
 	    (name-of (family-of f)) (metronome-of f) (state-of f))))
 
+;;(put 'dostate* 'lisp-indent-function 'defun)
+(defmacro dostate* (llist &body form)
+  ;; loop over active states
+  (let ((i (gensym))
+	(st (car llist))
+	(fi (cadr llist)))
+    `(loop
+       for ,st across (states-of ,fi)
+       for ,i from 0
+       when (= (sbit (state-of ,fi) ,i) 1)
+       ,@form
+       end)))
+
+;;(put 'dostate 'lisp-indent-function 'defun)
+(defmacro dostate (llist &body form)
+  (let* ((sv (gensym))
+	 (fi (second llist))
+	 (var (car llist))
+	 (m (if (listp var)
+		(first var)
+	      (gensym)))
+	 (p (if (listp var)
+		(second var)
+	      (gensym)))
+	 (s (if (listp var)
+		(third var)
+	      var)))
+    `(dostate* (,sv ,fi)
+       do (let ((,m (svref ,sv 0))
+		(,p (svref ,sv 1))
+		(,s (svref ,sv 2)))
+	    (declare (ignore ,m))
+	    (declare (ignore ,p))
+	    ,@form))))
+
 (defun %tuplify-state (fi st)
   "Given famiter FI and state bit-vector ST return a tuple of affected states."
-  (loop
-    for b across st
-    for i from 0
-    when (= b 1)
-    collect (svref (states-of fi) i)))
+  (dostate* (s fi)
+    collect s))
 
 (defgeneric famiter-set-state (famiter rule)
   (:documentation

@@ -109,6 +109,9 @@
    #:next-event
    #:metronome-of
 
+   ;; utils
+   #:while
+
    ;; predefined rules
    #:gregorian-good-friday
    #:gregorian-easter
