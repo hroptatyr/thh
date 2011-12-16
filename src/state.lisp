@@ -54,6 +54,11 @@
     :initform nil
     :accessor implications-of
     :type (list state))
+   (requires
+    :initarg :requires
+    :initform nil
+    :accessor requisites-of
+    :type (list state))
    (inhibits
     :initarg :inhibits
     :initform nil
@@ -75,6 +80,10 @@
 (defgeneric state-implies (s &rest states))
 (defmethod state-implies ((s state) &rest states)
   (pushnew-many (implications-of s) states))
+
+(defgeneric state-requires (s &rest states))
+(defmethod state-requires ((s state) &rest states)
+  (pushnew-many (requisites-of s) states))
 
 (defgeneric state-add-markets (s &rest markets))
 (defmethod state-add-markets ((s state) &rest markets)
@@ -98,6 +107,9 @@
 
      (defun ,(sym-conc name '-implies) (&rest states)
        (apply #'state-implies st states))
+
+     (defun ,(sym-conc name '-requires) (&rest states)
+       (apply #'state-requires st states))
 
      (defun ,(sym-conc name '-add-markets) (&rest markets)
        (apply #'state-add-markets st markets))
