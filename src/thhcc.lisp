@@ -44,40 +44,46 @@
 
 (defun main ()
   ;; ./thhcc FILE RULESET
-  (let ((cmd-line (my-command-line)))
-    (unless cmd-line
-      (error "Usage: thhcc RULE-FILE RULESET-SYMBOL"))
+  (block nil
+    (let ((cmd-line (my-command-line)))
+      (unless cmd-line
+	(error "Usage: thhcc RULE-FILE RULESET-SYMBOL"))
 
-    (let* ((rule-file (car cmd-line))
-	   (rule-file/real (probe-file rule-file))
-	   (ruleset/str (cadr cmd-line))
-	   (year/str (caddr cmd-line))
-	   (year/num (and year/str (parse-integer year/str)))
-	   (metro-sta (when year/num
-			(make-date :year year/num :mon 1 :dom 1)))
-	   (metro-end (when year/num
+      (let* ((rule-file (car cmd-line))
+	     (rule-file/real (probe-file rule-file))
+	     (ruleset/str (cadr cmd-line))
+	     (year/str (caddr cmd-line))
+	     (year/num (and year/str (parse-integer year/str)))
+	     (metro-sta (when year/num
+			  (make-date :year year/num :mon 1 :dom 1)))
+	     (metro-end (when year/num
 			  (make-datetime :year year/num :mon 12 :dom 31
 					 :hour 23 :min 59 :sec 59)))
-	   ruleset/sym
-	   ruleset)
+	     ruleset/sym
+	     ruleset)
 
-      (unless (and rule-file rule-file/real)
-	(error "cannot read file ~s" rule-file)
-	(quit))
-      (load rule-file/real)
+	(cond
+	 ((and rule-file rule-file/real))
+	 (t
+	  (error "cannot read file ~s" rule-file)))
+	(load rule-file/real)
 
-      (unless (and (stringp ruleset/str)
-		   (nstring-upcase ruleset/str)
-		   (setq ruleset/sym (find-symbol ruleset/str)))
-	(error "ruleset ~a not defined" ruleset/str)
-	(quit))
+	(cond
+	 ((and (stringp ruleset/str)
+	       (nstring-upcase ruleset/str)
+	       (setq ruleset/sym (find-symbol ruleset/str))))
+	 ((null ruleset/str)
+	  ;; interactive mode
+	  (return))
+	 (t
+	  (error "ruleset ~a not defined" ruleset/str)))
 
-      ;; assign ruleset
-      (setq ruleset (symbol-value ruleset/sym))
+	;; assign ruleset
+	(setq ruleset (symbol-value ruleset/sym))
 
-      ;; real work now
-      (real-work ruleset :metro-sta metro-sta :metro-end metro-end)))
-  (quit))
+	;; real work now
+	(real-work ruleset :metro-sta metro-sta :metro-end metro-end)
+	(quit)))))
 
 #+sbcl
 (sb-ext:save-lisp-and-die "thhcc.bin" :executable t :toplevel #'main)

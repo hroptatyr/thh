@@ -18,3 +18,7 @@ option "year" -
 occurring in that year only.  Can be specified multiple times."
 	int typestr="YEAR" optional multiple
 
+option "interactive" i
+	"Start in interactive mode, that is load the rules but \
+do not start the traversal."
+	optional
