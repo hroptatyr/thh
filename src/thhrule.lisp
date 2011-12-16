@@ -199,9 +199,14 @@ a bitmask to be xor'd to the current state of THING."))
 	  ;; all rules that match
 	  ;; filter rules that don't apply because of state issues
   	  (multiple-value-bind (stamp rules) (pick-next metro rules)
-	    (let (inhib)
+	    (let (inhib depen)
 	      (dostate ((m p s) fi)
-		(let ((i (inhibitions-of s)))
+		;; dependencies and inhibitions, are essentially the
+		;; same thing, if X is on, then S is off when
+		;; X-inhibits S and if X is off, then S is off too
+		;; when S-depends-on X
+		(let ((i (inhibitions-of s))
+		      (d (dependencies-of s)))
 		  (when i
 		    (pushnew-many inhib i))))
 	      (setf rules
