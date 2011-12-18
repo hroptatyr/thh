@@ -75,15 +75,21 @@
 
 (defgeneric state-inhibits (s &rest states))
 (defmethod state-inhibits ((s state) &rest states)
-  (pushnew-many (inhibitions-of s) states))
+  (loop
+    for req in states
+    do (pushnew req (inhibitions-of s))))
 
 (defgeneric state-implies (s &rest states))
 (defmethod state-implies ((s state) &rest states)
-  (pushnew-many (implications-of s) states))
+  (loop
+    for req in states
+    do (pushnew req (implications-of s))))
 
 (defgeneric state-requires (s &rest states))
 (defmethod state-requires ((s state) &rest states)
-  (pushnew-many (requisites-of s) states))
+  (loop
+    for req in states
+    do (pushnew req (requisites-of s))))
 
 (defgeneric state-add-markets (s &rest markets))
 (defmethod state-add-markets ((s state) &rest markets)
