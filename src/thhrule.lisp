@@ -136,6 +136,11 @@ a bitmask to be xor'd to the current state of THING."))
   (:documentation
    "Resort rules in FAMITER."))
 
+(defgeneric active-rules (famiter rules)
+  (:documentation
+   "Return all rules meant to be active according to the state of
+FAMITER and a list of to be activated RULES."))
+
 (defmethod next-state-flip ((s stamp) (r rule))
   (let* ((v (validity-of r))
 	 (vst (start-of v))
@@ -184,6 +189,20 @@ a bitmask to be xor'd to the current state of THING."))
       ;; multi values?
       (values cho (picker rules)))))
 
+(defmethod active-rules ((fi famiter) (rules list))
+  (let (active inactive)
+    (dostate (s fi)
+      (pushnew s active))
+    (dolist (r rules)
+      (pushnew (state-of r) active))
+
+    ;; dependencies and inhibitions, are essentially the
+    ;; same thing, if X is on, then S is off when
+    ;; X-inhibits S and if X is off, then S is off too
+    ;; when S-depends-on X
+
+    (values active inactive)))
+
 (defmethod metro-round ((fi famiter))
   (let ((f (family-of fi)))
     (with-accessors ((metro metronome-of)) fi
@@ -199,19 +218,10 @@ a bitmask to be xor'd to the current state of THING."))
 	  ;; all rules that match
 	  ;; filter rules that don't apply because of state issues
   	  (multiple-value-bind (stamp rules) (pick-next metro rules)
-	    (let (inhib depen)
-	      (dostate ((m p s) fi)
-		;; dependencies and inhibitions, are essentially the
-		;; same thing, if X is on, then S is off when
-		;; X-inhibits S and if X is off, then S is off too
-		;; when S-depends-on X
-		(let ((i (inhibitions-of s))
-		      (d (dependencies-of s)))
-		  (when i
-		    (pushnew-many inhib i))))
+	    (multiple-value-bind (active inactive) (active-rules fi rules)
 	      (setf rules
 		    (delete-if #'(lambda (r)
-				   (when (member (state-of r) inhib)
+				   (unless (member (state-of r) active)
 				     (format t "~a inhib'd~%" r)
 				     t))
 			       rules))
