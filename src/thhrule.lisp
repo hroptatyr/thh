@@ -136,11 +136,6 @@ a bitmask to be xor'd to the current state of THING."))
   (:documentation
    "Resort rules in FAMITER."))
 
-(defgeneric active-rules (famiter rules)
-  (:documentation
-   "Return all rules meant to be active according to the state of
-FAMITER and a list of to be activated RULES."))
-
 (defmethod next-state-flip ((s stamp) (r rule))
   (let* ((v (validity-of r))
 	 (vst (start-of v))
@@ -189,19 +184,32 @@ FAMITER and a list of to be activated RULES."))
       ;; multi values?
       (values cho (picker rules)))))
 
-(defmethod active-rules ((fi famiter) (rules list))
+(defun requisites-met (s states)
+  (loop
+    for r in (requisites-of s)
+    always (member r states)))
+
+(defun active-state (famiter)
   (let (active inactive)
-    (dostate (s fi)
+    (dostate (s famiter)
       (pushnew s active))
-    (dolist (r rules)
-      (pushnew (state-of r) active))
 
-    ;; dependencies and inhibitions, are essentially the
-    ;; same thing, if X is on, then S is off when
-    ;; X-inhibits S and if X is off, then S is off too
-    ;; when S-depends-on X
+    ;; inhibitions first
+    (loop
+      for s in active
+      do (loop
+	   for i in (inhibitions-of s)
+	   when (member i active)
+	   do (push i inactive)))
 
-    (values active inactive)))
+    ;; now check requisites
+    (loop
+      for s in active
+      unless (or (member s inactive)
+		 (requisites-met s active))
+      do (push s inactive))
+
+    inactive))
 
 (defmethod metro-round ((fi famiter))
   (let ((f (family-of fi)))
@@ -216,33 +224,34 @@ FAMITER and a list of to be activated RULES."))
 	  ;; stable-sort needs #'setf'ing under sbcl
 	  (setf rules (sort rules #'metro-sort))
 	  ;; all rules that match
-	  ;; filter rules that don't apply because of state issues
-  	  (multiple-value-bind (stamp rules) (pick-next metro rules)
-	    (multiple-value-bind (active inactive) (active-rules fi rules)
-	      (setf rules
-		    (delete-if #'(lambda (r)
-				   (unless (member (state-of r) active)
-				     (format t "~a inhib'd~%" r)
-				     t))
-			       rules))
-	      (values stamp rules))))))))
+	  (pick-next metro rules))))))
 
 (defmethod next-event ((fi famiter))
-  (let (rules)
+  (let (old-fist rules)
     (with-accessors ((metro metronome-of) (fist state-of)) fi
-      (while (and (multiple-value-setq (metro rules) (metro-round fi))
-		  (null rules)))
-      (when metro
-	(flet ((set-state (r)
-		 (let ((sta (start-of r))
-		       (end (end-of r)))
-		   (cond
-		    ((dt= sta metro)
-		     (famiter-set-state fi r))
-		    ((dt= end metro)
-		     (famiter-clr-state fi r))))))
-	  (mapc #'set-state rules)
-	  (values metro (state-of fi)))))))
+      (setf old-fist (copy-seq fist))
+      (loop
+	while (multiple-value-setq (metro rules) (metro-round fi))
+	do (flet ((set-state (r)
+		    (let ((sta (start-of r))
+			  (end (end-of r)))
+		      (cond
+		       ((dt= sta metro)
+			(famiter-set-state fi r))
+		       ((dt= end metro)
+			(famiter-clr-state fi r))))))
+	     (mapc #'set-state rules))
+	;; apply inhibition rules and stuff
+	do (let ((dea (active-state fi)))
+	     (loop
+	       for s across (states-of fi)
+	       for i from 0
+	       when (and (= (sbit fist i) 1)
+			 (member (svref s 2) dea))
+	       do (setf (sbit fist i) 0)))
+	;; check if we really ever changed the state
+	until (not (equalp fist old-fist)))
+      (values metro fist))))
 
 
 ;; other stuff, for keeps
