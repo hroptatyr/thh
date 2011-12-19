@@ -57,15 +57,21 @@
 
 (defgeneric product-add-markets (p &rest markets))
 (defmethod product-add-markets ((p product) &rest markets)
-  (pushnew-many (markets-of p) markets))
+  (loop
+    for m in markets
+    do (pushnew m (markets-of p))))
 
 (defgeneric product-add-states (p &rest states))
 (defmethod product-add-states ((p product) &rest states)
-  (pushnew-many (states-of p) states))
+  (loop
+    for s in states
+    do (pushnew s (states-of p))))
 
 (defgeneric product-add-rules (p &rest rules))
 (defmethod product-add-rules ((p product) &rest rules)
-  (pushnew-many (rules-of p) rules))
+  (loop
+    for r in rules
+    do (pushnew r (rules-of p))))
 
 (defmethod push-rule ((p product) r)
   (product-add-rules p r))
