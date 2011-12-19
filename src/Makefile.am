@@ -1,5 +1,3 @@
-LISPFLAV = clisp
-
 bin_PROGRAMS =
 libexec_PROGRAMS =
 BUILT_SOURCES =
