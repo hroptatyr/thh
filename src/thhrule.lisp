@@ -191,8 +191,11 @@ a bitmask to be xor'd to the current state of THING."))
 
 (defun active-state (famiter)
   (let (active inactive)
-    (dostate (s famiter)
-      (pushnew s active))
+    (loop
+      for s across (states-of famiter)
+      for i from 0
+      when (= (sbit (state-of famiter) i) 1)
+      do (pushnew (svref s 2) active))
 
     ;; inhibitions first
     (loop
