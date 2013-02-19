@@ -233,9 +233,6 @@
      (apply #'concatenate 'string
        (mapcar #'sym-or-string-name syms-or-strings)))))
 
-(defmacro pushnew-many (place list)
-  `(setf ,place (union ,place ,list)))
-
 (defmacro while (cond &body form)
   `(loop
      while ,cond

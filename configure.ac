@@ -34,9 +34,27 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 AC_PROG_CC
 AC_PROG_CC_C99
 
+
+AC_ARG_WITH([lisp], [dnl
+AS_HELP_STRING([--with-lisp], [
+use specified lisp compiler.  Default: pick one of clisp, sbcl, lisp.
+])], [with_lisp="${withval}"], [with_lisp="clisp sbcl lisp"])
+
+## check for the lisp flavour chosen
+AC_ARG_VAR([LISPFLAV], [The lisp compiler to use])
+for i in ${with_lisp}; do
+	AC_PATH_PROG([LISPFLAV], ["${i}"])
+	if test -n "${LISPFLAV}"; then
+		break
+	fi
+done
+AC_SUBST([LISPFLAV])
+
+
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([src/Makefile])
 AC_OUTPUT
+
 
 cat <<EOF
 

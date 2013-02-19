@@ -93,14 +93,18 @@
 
 (defgeneric state-add-markets (s &rest markets))
 (defmethod state-add-markets ((s state) &rest markets)
-  (pushnew-many (markets-of s) markets))
+  (loop
+    for m in markets
+    do (pushnew m (markets-of s))))
 
 (defgeneric state-add-products (s &rest products))
 (defmethod state-add-products ((s state) &rest products)
-  (pushnew-many (products-of s) products))
+  (loop
+    for p in products
+    do (pushnew p (products-of s))))
 
 (defmethod push-rule ((s state) r)
-  (pushnew-many (rules-of s) (list r)))
+  (pushnew r (rules-of s)))
 
 (defmacro defstate (name &rest v+k)
   `(let ((st (make-state ,@v+k :name ',name)))
